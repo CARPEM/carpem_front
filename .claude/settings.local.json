@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(bash -c 'npm run typecheck 2>&1 | tail -5')",
+      "Bash(jq -e '.hooks.PostToolUse[] | select\\(.matcher == \"\"Write|Edit\"\"\\) | .hooks[] | select\\(.type == \"\"command\"\"\\) | .command' /home/bastien/code/carpem_front/.claude/settings.json)",
+      "Bash(python3 -c \"import json; d=json.load\\(open\\(''/home/bastien/code/carpem_front/.claude/settings.json''\\)\\); h=d[''hooks''][''PostToolUse''][0]; print\\(''matcher:'', h[''matcher'']\\); print\\(''command:'', h[''hooks''][0][''command'']\\); print\\(''JSON valid: OK''\\)\")",
+      "Bash(ls /home/bastien/code/carpem_front/postcss.config.*)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s \"http://localhost:5173/src/main.tsx\" -H \"Accept: */*\")",
+      "Bash(curl -s \"http://localhost:5173/src/App.tsx\")",
+      "Bash(curl -s \"http://localhost:5173/src/data/mockBundle.ts\")",
+      "Bash(curl -s \"http://localhost:5173/src/store/patient.ts\")",
+      "Bash(grep -r \"from ''d3''\" /home/bastien/code/carpem_front/src/)",
+      "Bash(xargs sed:*)"
+    ]
+  }
+}

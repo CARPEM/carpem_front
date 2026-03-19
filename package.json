@@ -1,0 +1,32 @@
+{
+  "name": "carpem-front",
+  "description": "CARPEM CMOT — Single Patient 360° Profile. FHIR R4 read-only clinical dashboard for oncologists, displaying a patient's full longitudinal oncology trajectory across diagnosis, systemic therapy, radiotherapy, surgery, imaging, biobanking, and molecular profiling.",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "d3": "^7.9.0",
+    "recharts": "^2.14.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/fhir": "^0.0.41",
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.0.6",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11"
+  }
+}
