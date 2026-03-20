@@ -13,6 +13,7 @@ import {
 } from './constants'
 import TimeAxis from './TimeAxis'
 import CurrentDateLine from './CurrentDateLine'
+import CursorLine from './CursorLine'
 import SwimLaneRow from './SwimLaneRow'
 import TooltipOverlay from './TooltipOverlay'
 import KeyEventsLane from './lanes/KeyEventsLane'
@@ -35,7 +36,7 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
 
   // Store
-  const { zoom, offset, setZoom, setOffset, initZoom, setCentralPlotWidth } = useTimelineStore()
+  const { zoom, offset, hoverMonths, setZoom, setOffset, setHoverMonths, initZoom, setCentralPlotWidth } = useTimelineStore()
   const { t0 } = usePatientStore()
   const { setSelectedSpecimen, setSelectedProcedure } = useSelectionStore()
 
@@ -151,17 +152,32 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
 
   const onMouseMove = useCallback(
     (e: React.MouseEvent<SVGSVGElement>) => {
-      if (!dragRef.current) return
-      const { zoom: z, setOffset: so } = useTimelineStore.getState()
-      const dMonths = -(e.clientX - dragRef.current.startX) / z
-      const newOffset = dragRef.current.startOffset + dMonths
-      const viewMonths = plotWidth / z
-      so(Math.max(-3, Math.min(newOffset, currentMonths + 6 - viewMonths)))
+      const { zoom: z, offset: o, setOffset: so, setHoverMonths: shm } = useTimelineStore.getState()
+      if (dragRef.current) {
+        const dMonths = -(e.clientX - dragRef.current.startX) / z
+        const newOffset = dragRef.current.startOffset + dMonths
+        const viewMonths = plotWidth / z
+        so(Math.max(-3, Math.min(newOffset, currentMonths + 6 - viewMonths)))
+      }
+      // Update cursor line position
+      const rect = svgRef.current?.getBoundingClientRect()
+      if (rect) {
+        const mouseX = e.clientX - rect.left - LABEL_WIDTH
+        if (mouseX >= 0 && mouseX <= plotWidth) {
+          shm(o + mouseX / z)
+        } else {
+          shm(null)
+        }
+      }
     },
     [plotWidth, currentMonths],
   )
 
   const onMouseUp = useCallback(() => { dragRef.current = null }, [])
+  const onMouseLeave = useCallback(() => {
+    dragRef.current = null
+    useTimelineStore.getState().setHoverMonths(null)
+  }, [])
 
   // ── Keyboard: + / - ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -245,7 +261,7 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
+        onMouseLeave={onMouseLeave}
       >
         {containerSize.width > 0 && (
           <>
@@ -277,6 +293,13 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
                 {laneContent[lane.id]}
               </SwimLaneRow>
             ))}
+            <CursorLine
+              zoom={zoom}
+              offset={offset}
+              hoverMonths={hoverMonths}
+              totalHeight={totalHeight}
+              plotWidth={plotWidth}
+            />
           </>
         )}
       </svg>

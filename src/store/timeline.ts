@@ -8,9 +8,12 @@ interface TimelineState {
   offset: number
   /** Plot area width of the centre panel (px). Used by sparklines for shared time domain. */
   centralPlotWidth: number
+  /** Month value under the mouse cursor (null when not hovering). Shared between timeline and sparklines. */
+  hoverMonths: number | null
   setZoom: (zoom: number) => void
   setOffset: (offset: number) => void
   setCentralPlotWidth: (width: number) => void
+  setHoverMonths: (m: number | null) => void
   /** Initialise to default view: T0 → (currentMonths + 6 months), clamped to ZOOM_PX_MAX. */
   initZoom: (currentMonths: number, plotWidth: number) => void
 }
@@ -19,9 +22,11 @@ export const useTimelineStore = create<TimelineState>((set) => ({
   zoom: 10,
   offset: 0,
   centralPlotWidth: 0,
+  hoverMonths: null,
   setZoom: (zoom) => set({ zoom }),
   setOffset: (offset) => set({ offset }),
   setCentralPlotWidth: (width) => set({ centralPlotWidth: width }),
+  setHoverMonths: (m) => set({ hoverMonths: m }),
   initZoom: (currentMonths, plotWidth) => {
     const defaultZoom = Math.min(plotWidth / (currentMonths + 6), ZOOM_PX_MAX)
     set({ zoom: defaultZoom, offset: 0, centralPlotWidth: plotWidth })

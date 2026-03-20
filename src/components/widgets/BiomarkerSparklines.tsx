@@ -49,7 +49,7 @@ function SparkDot(props: unknown) {
 
 export default function BiomarkerSparklines() {
   const { observations, t0 } = usePatientStore()
-  const { zoom, offset, centralPlotWidth } = useTimelineStore()
+  const { zoom, offset, centralPlotWidth, hoverMonths, setHoverMonths } = useTimelineStore()
 
   if (!t0) return null
 
@@ -107,7 +107,21 @@ export default function BiomarkerSparklines() {
         const yMax = Math.max(...allValues, refHigh ?? 0) * 1.2
 
         return (
-          <div key={loincCode}>
+          <div
+            key={loincCode}
+            onMouseMove={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect()
+              const margin = { left: 0, right: 4 }
+              const chartWidth = rect.width - margin.left - margin.right
+              const mouseX = e.clientX - rect.left - margin.left
+              if (mouseX >= 0 && mouseX <= chartWidth) {
+                setHoverMonths(domainMin + (mouseX / chartWidth) * (domainMax - domainMin))
+              } else {
+                setHoverMonths(null)
+              }
+            }}
+            onMouseLeave={() => setHoverMonths(null)}
+          >
             <div className="flex items-baseline justify-between mb-0.5">
               <span className="text-[13px] font-semibold text-gray-700">{label}</span>
               <span className="text-base text-gray-400">{unit}</span>
@@ -129,6 +143,15 @@ export default function BiomarkerSparklines() {
                     stroke="#F97316"
                     strokeDasharray="4 3"
                     strokeWidth={1}
+                  />
+                )}
+
+                {hoverMonths != null && hoverMonths >= domainMin && hoverMonths <= domainMax && (
+                  <ReferenceLine
+                    x={hoverMonths}
+                    stroke="#64748B"
+                    strokeWidth={1}
+                    strokeOpacity={0.5}
                   />
                 )}
 
