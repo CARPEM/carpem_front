@@ -13,6 +13,7 @@ import type {
   FhirDiagnosticReport,
   FhirSpecimen,
   FhirDocumentReference,
+  FhirEncounter,
 } from '@/types/fhir'
 
 interface PatientState {
@@ -27,6 +28,7 @@ interface PatientState {
   diagnosticReports: FhirDiagnosticReport[]
   specimens: FhirSpecimen[]
   documents: FhirDocumentReference[]
+  encounters: FhirEncounter[]
   // Computed
   t0: Date | null
   // Action
@@ -44,6 +46,7 @@ export const usePatientStore = create<PatientState>((set) => ({
   diagnosticReports: [],
   specimens: [],
   documents: [],
+  encounters: [],
   t0: null,
 
   loadBundle: (bundle) => {
@@ -59,6 +62,7 @@ export const usePatientStore = create<PatientState>((set) => ({
       diagnosticReports: getResources(bundle, 'DiagnosticReport'),
       specimens: getResources(bundle, 'Specimen'),
       documents: getResources(bundle, 'DocumentReference'),
+      encounters: getResources(bundle, 'Encounter'),
       t0: computeT0(conditions),
     })
   },

@@ -12,16 +12,17 @@ import {
   ZOOM_PX_MAX,
 } from './constants'
 import TimeAxis from './TimeAxis'
-import CurrentDateLine from './CurrentDateLine'
 import CursorLine from './CursorLine'
 import SwimLaneRow from './SwimLaneRow'
 import TooltipOverlay from './TooltipOverlay'
 import KeyEventsLane from './lanes/KeyEventsLane'
+import HospitalizationsLane from './lanes/HospitalizationsLane'
 import SystemicTherapyLane from './lanes/SystemicTherapyLane'
 import RadioSurgeryLane from './lanes/RadioSurgeryLane'
 import ImagingLane from './lanes/ImagingLane'
 import BiobankingLane from './lanes/BiobankingLane'
 import ProgressionLines from './ProgressionLines'
+import DeathLine from './DeathLine'
 import type { TooltipState, MarkerInfo } from './types'
 
 interface Props {
@@ -43,11 +44,12 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
   // Derived layout — per-lane heights, systemic therapy gets 2×
   const plotWidth = containerSize.width - LABEL_WIDTH
   const laneHeights: Record<string, number> = {
-    'key-events': LANE_HEIGHT,
-    'systemic':   LANE_HEIGHT * 2,
-    'rt-surgery': LANE_HEIGHT,
-    'imaging':    LANE_HEIGHT,
-    'biobanking': LANE_HEIGHT,
+    'key-events':       LANE_HEIGHT,
+    'hospitalizations': LANE_HEIGHT,
+    'systemic':         LANE_HEIGHT * 2,
+    'rt-surgery':       LANE_HEIGHT,
+    'imaging':          LANE_HEIGHT,
+    'biobanking':       LANE_HEIGHT,
   }
   // Cumulative Y positions for each lane
   const laneYs: Record<string, number> = {}
@@ -214,6 +216,14 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
         onHover={showTooltip}
       />
     ),
+    'hospitalizations': (
+      <HospitalizationsLane
+        laneY={laneYs['hospitalizations']}
+        laneHeight={laneHeights['hospitalizations']}
+        plotWidth={plotWidth}
+        onHover={showTooltip}
+      />
+    ),
     'systemic': (
       <SystemicTherapyLane
         laneY={laneYs['systemic']}
@@ -271,16 +281,10 @@ export default function TimelineCanvas({ plotWidthRef }: Props) {
               zoom={zoom}
               offset={offset}
               plotWidth={plotWidth}
-              currentMonths={currentMonths}
               totalHeight={totalHeight}
             />
             <ProgressionLines totalHeight={totalHeight} plotWidth={plotWidth} />
-            <CurrentDateLine
-              zoom={zoom}
-              offset={offset}
-              currentMonths={currentMonths}
-              totalHeight={totalHeight}
-            />
+            <DeathLine totalHeight={totalHeight} plotWidth={plotWidth} />
             {SWIM_LANES.map((lane, i) => (
               <SwimLaneRow
                 key={lane.id}

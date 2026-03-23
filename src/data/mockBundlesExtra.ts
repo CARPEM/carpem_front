@@ -52,6 +52,98 @@ function doses(
   }))
 }
 
+function hosp(
+  id: string,
+  reason: string,
+  start: string,
+  end: string,
+  patRef: { reference: string },
+): object {
+  return {
+    fullUrl: `urn:uuid:${id}`,
+    resource: {
+      resourceType: 'Encounter' as const,
+      id,
+      status: 'finished' as const,
+      class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+      type: [{ text: reason }],
+      subject: patRef,
+      period: { start, end },
+    },
+  }
+}
+
+function variant(
+  id: string,
+  geneHgnc: string,
+  geneDisplay: string,
+  vaf: number,
+  consequenceCode: string,
+  consequenceDisplay: string,
+  cHGVS: string | null,
+  pHGVS: string | null,
+  date: string,
+  patRef: { reference: string },
+  actionable = false,
+): object {
+  return {
+    fullUrl: `urn:uuid:${id}`,
+    resource: {
+      resourceType: 'Observation' as const,
+      id,
+      status: 'final' as const,
+      category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/observation-category', code: 'laboratory' }] }],
+      code: { coding: [{ system: 'http://loinc.org', code: '69548-6', display: 'Genetic variant assessment' }] },
+      subject: patRef,
+      effectiveDateTime: date,
+      ...(actionable ? { interpretation: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation', code: 'A', display: 'Actionable' }] }] } : {}),
+      component: [
+        {
+          code: { coding: [{ system: 'http://loinc.org', code: '48018-6', display: 'Gene studied [ID]' }] },
+          valueCodeableConcept: { coding: [{ system: 'http://www.genenames.org', code: geneHgnc, display: geneDisplay }] },
+        },
+        {
+          code: { coding: [{ system: 'http://loinc.org', code: '81258-6', display: 'Variant allele frequency [NFr]' }] },
+          valueQuantity: { value: vaf, unit: '%', system: 'http://unitsofmeasure.org', code: '%' },
+        },
+        {
+          code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
+          valueCodeableConcept: { coding: [{ code: consequenceCode, display: consequenceDisplay }] },
+        },
+        ...(cHGVS ? [{ code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] }, valueString: cHGVS }] : []),
+        ...(pHGVS ? [{ code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] }, valueString: pHGVS }] : []),
+      ],
+    },
+  }
+}
+
+function molReport(
+  id: string,
+  title: string,
+  specimenId: string,
+  date: string,
+  variantIds: string[],
+  patRef: { reference: string },
+): object {
+  return {
+    fullUrl: `urn:uuid:${id}`,
+    resource: {
+      resourceType: 'DiagnosticReport' as const,
+      id,
+      status: 'final' as const,
+      category: [{ coding: [{ system: 'http://terminology.hl7.org/CodeSystem/v2-0074', code: 'GE', display: 'Genetics' }] }],
+      code: {
+        coding: [{ system: 'http://loinc.org', code: '81247-9', display: 'Master HL7 genetic variant reporting panel' }],
+        text: title,
+      },
+      subject: patRef,
+      effectiveDateTime: date,
+      specimen: [{ reference: `Specimen/${specimenId}` }],
+      result: variantIds.map((vid) => ({ reference: `Observation/${vid}` })),
+    },
+  }
+}
+
 function labObs(
   prefix: string,
   loincCode: string,
@@ -209,6 +301,15 @@ export const mockBundle3: FhirBundle = {
         'MDT decision: 2nd-line pembrolizumab (200 mg Q3W). Patient informed and consented.'
       )}}],
     }},
+    // Genomics
+    molReport('rep3-genomic', 'Comprehensive genomic profiling (CGP) — cervical biopsy', 'spec3-baseline', '2021-03-10', ['var3-pik3ca', 'var3-tp53', 'var3-fbxw7'], P3),
+    variant('var3-pik3ca', 'HGNC:8975',  'PIK3CA', 0.38, 'missense_variant',   'Missense variant', 'c.1633G>A', 'p.Glu545Lys', '2021-03-10', P3, true),
+    variant('var3-tp53',   'HGNC:11998', 'TP53',   0.45, 'missense_variant',   'Missense variant', 'c.524G>A',  'p.Arg175His', '2021-03-10', P3),
+    variant('var3-fbxw7',  'HGNC:13280', 'FBXW7',  0.22, 'missense_variant',   'Missense variant', 'c.1393C>T', 'p.Arg465Cys', '2021-03-10', P3),
+    // Hospitalisations
+    hosp('enc3-diag',         'Bilan diagnostique et staging initial',                      '2021-03-15', '2021-03-19', P3),
+    hosp('enc3-rt-tox',       'Toxicité radiothérapie — diarrhées grade 3',                 '2021-06-01', '2021-06-05', P3),
+    hosp('enc3-hysterectomy', 'Hystérectomie radicale (Wertheim) — hospitalisation chirurgicale', '2021-07-20', '2021-07-27', P3),
   ],
 }
 
@@ -327,6 +428,14 @@ export const mockBundle4: FhirBundle = {
         'MDT: 1st-line osimertinib 80 mg/day (FLAURA protocol). Baseline LVEF normal.'
       )}}],
     }},
+    // Genomics
+    molReport('rep4-genomic', 'Comprehensive genomic profiling (CGP) — lung biopsy', 'spec4-baseline', '2020-11-03', ['var4-egfr', 'var4-tp53', 'var4-stk11'], P4),
+    variant('var4-egfr',  'HGNC:3236',  'EGFR',  0.42, 'inframe_deletion',   'In-frame deletion (del19)', 'c.2235_2249del', 'p.Glu746_Ala750del', '2020-11-03', P4, true),
+    variant('var4-tp53',  'HGNC:11998', 'TP53',  0.18, 'missense_variant',   'Missense variant',          'c.742C>T',       'p.Arg248Trp',        '2020-11-03', P4),
+    variant('var4-stk11', 'HGNC:11389', 'STK11', 0.15, 'frameshift_variant', 'Frameshift variant',        'c.465_466del',   'p.Lys155Serfs*9',    '2020-11-03', P4),
+    // Hospitalisations
+    hosp('enc4-diag',        'Bilan diagnostique — hospitalisation initiale',             '2020-11-08', '2020-11-12', P4),
+    hosp('enc4-pneumonitis', 'Pneumopathie interstitielle grade 3 sous osimertinib',      '2022-03-10', '2022-03-17', P4),
   ],
 }
 
@@ -429,6 +538,15 @@ export const mockBundle5: FhirBundle = {
         'Genetic counselling offered to first-degree relatives.'
       )}}],
     }},
+    // Genomics
+    molReport('rep5-genomic', 'Comprehensive genomic profiling (CGP) — oophorectomy specimen', 'spec5-baseline', '2019-09-10', ['var5-brca2', 'var5-tp53', 'var5-ccne1'], P5),
+    variant('var5-brca2', 'HGNC:1101',  'BRCA2', 0.50, 'frameshift_variant',        'Frameshift variant (germline)',   'c.5946del',  'p.Ser1982Argfs*22', '2019-09-10', P5, true),
+    variant('var5-tp53',  'HGNC:11998', 'TP53',  0.56, 'missense_variant',          'Missense variant',               'c.524G>A',   'p.Arg175His',       '2019-09-10', P5),
+    variant('var5-ccne1', 'HGNC:1577',  'CCNE1', 0.82, 'copy_number_amplification', 'Copy number amplification', null, null, '2019-09-10', P5),
+    // Hospitalisations
+    hosp('enc5-diag',      'Bilan diagnostique — hospitalisation initiale',               '2019-08-20', '2019-08-25', P5),
+    hosp('enc5-crs',       'Chirurgie de cytoréduction (hystérectomie + BSO + omentectomie)', '2019-09-10', '2019-09-17', P5),
+    hosp('enc5-carbo-tox', 'Thrombopénie grade 4 — toxicité carboplatin cycle 3',         '2020-02-05', '2020-02-08', P5),
   ],
 }
 
@@ -527,6 +645,14 @@ export const mockBundle6: FhirBundle = {
         'Pembrolizumab reserved for 2nd-line or progression. Patient enrolled in COMBI-RT trial.'
       )}}],
     }},
+    // Genomics
+    molReport('rep6-genomic', 'Comprehensive genomic profiling (CGP) — melanoma excision', 'spec6-baseline', '2022-04-05', ['var6-braf', 'var6-nf1', 'var6-pten'], P6),
+    variant('var6-braf', 'HGNC:1097',  'BRAF', 0.48, 'missense_variant',   'Missense variant', 'c.1799T>A',        'p.Val600Glu',      '2022-04-05', P6, true),
+    variant('var6-nf1',  'HGNC:7765',  'NF1',  0.28, 'frameshift_variant', 'Frameshift variant', 'c.2991_2994del', 'p.Gln998Hisfs*9',  '2022-04-05', P6),
+    variant('var6-pten', 'HGNC:9588',  'PTEN', 0.22, 'splice_region_variant', 'Splice region variant', 'c.954+3A>T', 'p.(?)',           '2022-04-05', P6),
+    // Hospitalisations
+    hosp('enc6-diag',    'Bilan diagnostique — staging initial',                     '2022-04-10', '2022-04-14', P6),
+    hosp('enc6-colitis', 'Colite immune grade 3 sous dabrafenib/tramétinib',         '2022-08-20', '2022-08-27', P6),
   ],
 }
 
@@ -542,7 +668,7 @@ export const mockBundle7: FhirBundle = {
       resourceType: 'Patient', id: 'patient-007',
       identifier: [{ use: 'official', system: 'http://carpem.fr/patient-id', value: 'CARPEM-2023-00087' }],
       name: [{ use: 'official', family: 'Blanc', given: ['Marguerite'] }],
-      gender: 'female', birthDate: '1953-04-18', deceasedBoolean: false,
+      gender: 'female', birthDate: '1953-04-18', deceasedDateTime: '2026-07-15',
     }},
     { fullUrl: 'urn:uuid:cond7-primary', resource: {
       resourceType: 'Condition', id: 'cond7-primary',
@@ -631,6 +757,17 @@ export const mockBundle7: FhirBundle = {
         'Goal: CR followed by allogeneic SCT in CR1. MUD search initiated in parallel.'
       )}}],
     }},
+    // Genomics
+    molReport('rep7-genomic', 'Acute myeloid leukaemia genomic panel — bone marrow', 'spec7-bm-baseline', '2023-01-16', ['var7-flt3', 'var7-npm1', 'var7-dnmt3a'], P7),
+    variant('var7-flt3',   'HGNC:3765',  'FLT3',   0.42, 'inframe_insertion', 'In-frame insertion (ITD)', 'c.1780_1836dup', 'p.Tyr594_Phe612dup', '2023-01-16', P7, true),
+    variant('var7-npm1',   'HGNC:7910',  'NPM1',   0.48, 'frameshift_variant', 'Frameshift variant',      'c.860_863dup',   'p.Trp288Cysfs*12',   '2023-01-16', P7, true),
+    variant('var7-dnmt3a', 'HGNC:2978',  'DNMT3A', 0.52, 'missense_variant',  'Missense variant',         'c.2645G>A',      'p.Arg882His',        '2023-01-16', P7),
+    // Hospitalisations
+    hosp('enc7-induction',  'Induction 7+3 + midostaurin — secteur protégé',               '2023-01-15', '2023-01-28', P7),
+    hosp('enc7-neutropenia','Neutropénie fébrile post-consolidation HiDAC',                 '2023-03-10', '2023-03-20', P7),
+    hosp('enc7-sct',        'Allogreffe de cellules souches hématopoïétiques (MUD, RIC)',   '2023-09-05', '2023-09-20', P7),
+    hosp('enc7-relapse',    'Rechute LAM — bilan et mise en route gilteritinib',             '2024-04-10', '2024-04-22', P7),
+    hosp('enc7-terminal',   'Soins palliatifs — phase terminale',                           '2026-07-06', '2026-07-15', P7),
   ],
 }
 
@@ -741,6 +878,14 @@ export const mockBundle8: FhirBundle = {
         'Baseline testosterone level checked. Zoledronic acid initiated for bone protection.'
       )}}],
     }},
+    // Genomics
+    molReport('rep8-genomic', 'Comprehensive genomic profiling (CGP) — prostate biopsy', 'spec8-baseline', '2018-05-25', ['var8-tp53', 'var8-pten', 'var8-cdk12'], P8),
+    variant('var8-tp53',  'HGNC:11998', 'TP53',  0.38, 'missense_variant',   'Missense variant',   'c.743G>A',   'p.Arg248Gln',      '2018-05-25', P8),
+    variant('var8-pten',  'HGNC:9588',  'PTEN',  0.35, 'splice_region_variant', 'Splice region variant', 'c.954+3A>T', 'p.(?)',       '2018-05-25', P8),
+    variant('var8-cdk12', 'HGNC:24648', 'CDK12', 0.22, 'frameshift_variant', 'Frameshift variant', 'c.5576del',  'p.Lys1859Argfs*3', '2018-05-25', P8),
+    // Hospitalisations
+    hosp('enc8-diag',          'Bilan diagnostique — hospitalisation initiale',         '2018-06-01', '2018-06-05', P8),
+    hosp('enc8-docetaxel-tox', 'Neutropénie fébrile grade 4 — toxicité docetaxel C4',  '2023-09-15', '2023-09-19', P8),
   ],
 }
 
@@ -837,6 +982,15 @@ export const mockBundle9: FhirBundle = {
         'Adjuvant pembrolizumab + olaparib (OlympiA). Genetic counselling and prophylactic salpingo-oophorectomy discussed.'
       )}}],
     }},
+    // Genomics
+    molReport('rep9-genomic', 'Comprehensive genomic profiling (CGP) — breast core biopsy', 'spec9-baseline', '2023-05-25', ['var9-brca1', 'var9-tp53', 'var9-rb1'], P9),
+    variant('var9-brca1', 'HGNC:1100',  'BRCA1', 0.50, 'frameshift_variant', 'Frameshift variant (germline)', 'c.5266dup',  'p.Gln1756Profs*74', '2023-05-25', P9, true),
+    variant('var9-tp53',  'HGNC:11998', 'TP53',  0.56, 'missense_variant',   'Missense variant',             'c.524G>A',   'p.Arg175His',       '2023-05-25', P9),
+    variant('var9-rb1',   'HGNC:9884',  'RB1',   0.28, 'missense_variant',   'Missense variant',             'c.2501A>G',  'p.Tyr834Cys',       '2023-05-25', P9),
+    // Hospitalisations
+    hosp('enc9-diag',       'Bilan diagnostique — hospitalisation initiale',              '2023-06-01', '2023-06-05', P9),
+    hosp('enc9-neutropenia','Neutropénie fébrile — toxicité AC cycle 2',                  '2023-11-10', '2023-11-14', P9),
+    hosp('enc9-mastectomy', 'Mastectomie totale droite + ganglion sentinelle',             '2024-01-15', '2024-01-20', P9),
   ],
 }
 
@@ -852,7 +1006,7 @@ export const mockBundle10: FhirBundle = {
       resourceType: 'Patient', id: 'patient-010',
       identifier: [{ use: 'official', system: 'http://carpem.fr/patient-id', value: 'CARPEM-2024-00028' }],
       name: [{ use: 'official', family: 'Garnier', given: ['Pierre'] }],
-      gender: 'male', birthDate: '1956-03-22', deceasedBoolean: false,
+      gender: 'male', birthDate: '1956-03-22', deceasedDateTime: '2027-03-15',
     }},
     { fullUrl: 'urn:uuid:cond10-primary', resource: {
       resourceType: 'Condition', id: 'cond10-primary',
@@ -963,5 +1117,16 @@ export const mockBundle10: FhirBundle = {
         'Palliative care team involved. Nutritional support (enteral supplementation) initiated.'
       )}}],
     }},
+    // Genomics
+    molReport('rep10-genomic', 'Comprehensive genomic profiling (CGP) — pancreatic FNA', 'spec10-baseline', '2024-01-11', ['var10-kras', 'var10-tp53', 'var10-cdkn2a', 'var10-smad4'], P10),
+    variant('var10-kras',   'HGNC:6407',  'KRAS',   0.52, 'missense_variant',   'Missense variant', 'c.35G>T',   'p.Gly12Val',       '2024-01-11', P10),
+    variant('var10-tp53',   'HGNC:11998', 'TP53',   0.48, 'missense_variant',   'Missense variant', 'c.818G>A',  'p.Arg273His',      '2024-01-11', P10),
+    variant('var10-cdkn2a', 'HGNC:1787',  'CDKN2A', 0.35, 'frameshift_variant', 'Frameshift variant (nonsense)', 'c.238C>T', 'p.Arg80*', '2024-01-11', P10),
+    variant('var10-smad4',  'HGNC:6770',  'SMAD4',  0.22, 'frameshift_variant', 'Frameshift variant (nonsense)', 'c.1245C>A', 'p.Cys415*', '2024-01-11', P10),
+    // Hospitalisations
+    hosp('enc10-diag',       'Bilan diagnostique + pose prothèse biliaire (ictère obstructif)', '2024-01-15', '2024-01-22', P10),
+    hosp('enc10-folfiri-tox','Toxicité FOLFIRINOX — diarrhées grade 3 + neutropénie',           '2024-04-20', '2024-04-25', P10),
+    hosp('enc10-bowel',      'Occlusion intestinale — pose stent duodénal',                     '2024-12-10', '2024-12-18', P10),
+    hosp('enc10-terminal',   'Soins palliatifs — phase terminale',                              '2027-03-08', '2027-03-15', P10),
   ],
 }

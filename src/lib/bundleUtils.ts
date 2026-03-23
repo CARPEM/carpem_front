@@ -10,6 +10,7 @@ import type {
   FhirDiagnosticReport,
   FhirSpecimen,
   FhirDocumentReference,
+  FhirEncounter,
 } from '@/types/fhir'
 
 type ResourceMap = {
@@ -23,6 +24,7 @@ type ResourceMap = {
   DiagnosticReport: FhirDiagnosticReport
   Specimen: FhirSpecimen
   DocumentReference: FhirDocumentReference
+  Encounter: FhirEncounter
 }
 
 /** Extract all resources of a given type from a FHIR bundle. */

@@ -3,24 +3,40 @@ import { useSelectionStore } from '@/store/selection'
 import { formatDate, formatTemporalLabel } from '@/lib/formatters'
 
 const CONTEXT_URL = 'http://carpem.fr/fhir/StructureDefinition/collection-context'
-const GENE_CODE = '48018-6'
-const VAF_CODE = '81258-6'
+const GENE_CODE        = '48018-6'
+const VAF_CODE         = '81258-6'
 const CONSEQUENCE_CODE = '48006-1'
+const HGVS_C_CODE      = '48004-6'
+const HGVS_P_CODE      = '48005-3'
 
 const VARIANT_COLORS: Record<string, string> = {
-  missense_variant: '#1E3A5F',
-  frameshift_variant: '#166534',
-  splice_region_variant: '#C2410C',
-  splice_site_variant: '#C2410C',
+  missense_variant:        '#1E3A5F',
+  frameshift_variant:      '#166534',
+  splice_region_variant:   '#C2410C',
+  splice_site_variant:     '#C2410C',
+  inframe_deletion:        '#7C3AED',
+  inframe_insertion:       '#4F46E5',
   copy_number_amplification: '#6B7280',
 }
 
 const VARIANT_LABELS: Record<string, string> = {
-  missense_variant: 'Missense',
-  frameshift_variant: 'Frameshift',
-  splice_region_variant: 'Splice site',
-  splice_site_variant: 'Splice site',
+  missense_variant:          'Missense',
+  frameshift_variant:        'Frameshift',
+  splice_region_variant:     'Splice site',
+  inframe_deletion:          'In-frame del',
+  inframe_insertion:         'In-frame ins',
   copy_number_amplification: 'CNV',
+}
+
+// splice_site_variant is an alias — map to same color/label, excluded from legend
+VARIANT_COLORS['splice_site_variant'] = VARIANT_COLORS['splice_region_variant']
+
+/** White on dark backgrounds, dark on light backgrounds. */
+function textOnBg(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? '#1E293B' : '#FFFFFF'
 }
 
 interface VariantRow {
@@ -29,6 +45,8 @@ interface VariantRow {
   variantType: string
   color: string
   label: string
+  cHGVS?: string
+  pHGVS?: string
 }
 
 export default function MolecularPanel() {
@@ -97,19 +115,26 @@ export default function MolecularPanel() {
         o.component
           ?.find((c) => c.code?.coding?.some((cd) => cd.code === CONSEQUENCE_CODE))
           ?.valueCodeableConcept?.coding?.[0]?.code ?? 'unknown'
+      const cHGVS = o.component
+        ?.find((c) => c.code?.coding?.some((cd) => cd.code === HGVS_C_CODE))
+        ?.valueString
+      const pHGVS = o.component
+        ?.find((c) => c.code?.coding?.some((cd) => cd.code === HGVS_P_CODE))
+        ?.valueString
       return {
         gene,
         vaf,
         variantType,
         color: VARIANT_COLORS[variantType] ?? '#6B7280',
         label: VARIANT_LABELS[variantType] ?? variantType,
+        cHGVS,
+        pHGVS,
       }
     })
     .sort((a, b) => b.vaf - a.vaf)
 
   const shown = variants.slice(0, 8)
   const extra = variants.length - shown.length
-  const maxVaf = Math.max(...variants.map((v) => v.vaf), 0.01)
 
   const actionableObs = observations.filter(
     (o) =>
@@ -161,30 +186,43 @@ export default function MolecularPanel() {
         {temporal && <Field label="T-Relative" value={temporal} mono />}
       </dl>
 
-      {/* Mutation waterfall */}
+      {/* Mutation table */}
       {shown.length > 0 && (
         <div>
           <h3 className="text-[13px] font-bold uppercase tracking-widest text-gray-900 mb-2">
             Key Somatic Mutations
           </h3>
-          <div className="space-y-1.5">
-            {shown.map((v) => (
-              <div key={v.gene} className="flex items-center gap-1.5">
-                <span className="text-[13px] font-mono w-12 text-right shrink-0 text-gray-700">
-                  {v.gene}
-                </span>
-                <div className="flex-1 h-2.5 bg-gray-100 rounded-sm overflow-hidden">
-                  <div
-                    style={{ width: `${(v.vaf / maxVaf) * 100}%`, background: v.color }}
-                    className="h-full rounded-sm"
-                  />
-                </div>
-                <span className="text-[13px] text-gray-500 w-8 shrink-0 text-right">
-                  {(v.vaf * 100).toFixed(0)}%
-                </span>
-              </div>
-            ))}
-          </div>
+          <table className="w-full table-fixed border-collapse text-[11px]">
+            <thead>
+              <tr className="text-gray-500 text-left border-b border-gray-200">
+                <th className="font-semibold py-0.5 w-14">Gene</th>
+                <th className="font-semibold py-0.5 font-mono">p.</th>
+                <th className="font-semibold py-0.5 font-mono">c.</th>
+                <th className="font-semibold py-0.5 w-10 text-right">VAF</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((v) => (
+                <tr key={v.gene} className="border-b border-gray-100 last:border-0">
+                  <td
+                    className="py-0.5 px-1 font-mono font-bold rounded-sm"
+                    style={{ background: v.color, color: textOnBg(v.color) }}
+                  >
+                    {v.gene}
+                  </td>
+                  <td className="py-0.5 px-1 font-mono text-gray-700 truncate">
+                    {v.pHGVS ?? '—'}
+                  </td>
+                  <td className="py-0.5 px-1 font-mono text-gray-500 truncate">
+                    {v.cHGVS ?? '—'}
+                  </td>
+                  <td className="py-0.5 text-right text-gray-600">
+                    {(v.vaf * 100).toFixed(0)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
           {/* Legend */}
           <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-2">

@@ -12,6 +12,7 @@ export type FhirImagingStudy = fhir4.ImagingStudy
 export type FhirDiagnosticReport = fhir4.DiagnosticReport
 export type FhirSpecimen = fhir4.Specimen
 export type FhirDocumentReference = fhir4.DocumentReference
+export type FhirEncounter = fhir4.Encounter
 
 /** T0-relative position in months (event.date − T0) / 30.44 */
 export type MonthsFromT0 = number

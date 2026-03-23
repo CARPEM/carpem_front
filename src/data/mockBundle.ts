@@ -422,6 +422,14 @@ export const mockBundle: FhirBundle = {
             code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
             valueCodeableConcept: { coding: [{ code: 'missense_variant', display: 'Missense variant' }] },
           },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] },
+            valueString: 'c.3140A>G',
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] },
+            valueString: 'p.His1047Arg',
+          },
         ],
       },
     },
@@ -448,6 +456,14 @@ export const mockBundle: FhirBundle = {
             code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
             valueCodeableConcept: { coding: [{ code: 'frameshift_variant', display: 'Frameshift variant' }] },
           },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] },
+            valueString: 'c.375_376del',
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] },
+            valueString: 'p.Pro126Argfs*18',
+          },
         ],
       },
     },
@@ -473,6 +489,14 @@ export const mockBundle: FhirBundle = {
           {
             code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
             valueCodeableConcept: { coding: [{ code: 'splice_region_variant', display: 'Splice site variant' }] },
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] },
+            valueString: 'c.5154+1G>T',
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] },
+            valueString: 'p.(?)',
           },
         ],
       },
@@ -632,6 +656,39 @@ export const mockBundle: FhirBundle = {
             ),
           },
         }],
+      },
+    },
+
+
+    // ── Encounters (hospitalizations) ─────────────────────────────────────────
+    {
+      fullUrl: 'urn:uuid:enc1-diag',
+      resource: {
+        resourceType: 'Encounter', id: 'enc1-diag', status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+        type: [{ text: 'Initial staging workup — breast MRI, sentinel node biopsy, PET-CT' }],
+        subject: PATIENT_REF,
+        period: { start: '2021-06-15', end: '2021-06-19' },
+      },
+    },
+    {
+      fullUrl: 'urn:uuid:enc1-neutropenia',
+      resource: {
+        resourceType: 'Encounter', id: 'enc1-neutropenia', status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+        type: [{ text: 'Febrile neutropenia (grade 4) — AC cycle 2' }],
+        subject: PATIENT_REF,
+        period: { start: '2021-09-12', end: '2021-09-17' },
+      },
+    },
+    {
+      fullUrl: 'urn:uuid:enc1-surgery',
+      resource: {
+        resourceType: 'Encounter', id: 'enc1-surgery', status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+        type: [{ text: 'Post-operative care — left mastectomy + axillary node dissection' }],
+        subject: PATIENT_REF,
+        period: { start: '2022-01-18', end: '2022-01-23' },
       },
     },
 

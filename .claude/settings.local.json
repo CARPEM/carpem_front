@@ -17,7 +17,10 @@
       "Bash(curl -s \"http://localhost:5173/src/store/patient.ts\")",
       "Bash(grep -r \"from ''d3''\" /home/bastien/code/carpem_front/src/)",
       "Bash(xargs sed:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(grep -n \"deceasedBoolean\\\\|],\\\\s*$\\\\|entry: \\\\[\" /home/bastien/code/carpem_front/src/data/mockBundle.ts)",
+      "Bash(wc -l /home/bastien/code/carpem_front/src/data/*.ts)",
+      "Bash(du -sh /home/bastien/code/carpem_front/src/data/*.ts)"
     ]
   }
 }

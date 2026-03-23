@@ -9,8 +9,9 @@ import type { MarkerInfo } from '../types'
 const T0_ANCHOR = T0_ANCHOR_URL
 const LOINC_PROGRESSION = '21976-6'
 
-const DX_COLOR = '#0D9488'
-const PROG_COLOR = '#DC2626'
+const DX_COLOR    = '#0D9488'
+const PROG_COLOR  = '#DC2626'
+const DEATH_COLOR = '#1B3A6B'
 
 interface Flag {
   id: string
@@ -32,7 +33,7 @@ interface Props {
 }
 
 export default function KeyEventsLane({ laneY, laneHeight, plotWidth, onHover }: Props) {
-  const { conditions, observations, t0 } = usePatientStore()
+  const { conditions, observations, patient, t0 } = usePatientStore()
   const { zoom, offset } = useTimelineStore()
   const [selectedFlag, setSelectedFlag] = useState<Flag | null>(null)
 
@@ -110,6 +111,21 @@ export default function KeyEventsLane({ laneY, laneHeight, plotWidth, onHover }:
         })
       }
     })
+
+  // Death marker from Patient.deceasedDateTime
+  if (patient?.deceasedDateTime) {
+    const date = new Date(patient.deceasedDateTime)
+    flags.push({
+      id: 'death',
+      months: toMonthsFromT0(date, t0),
+      color: DEATH_COLOR,
+      shortLabel: 'D',
+      fullLabel: 'Death',
+      code: 'Death',
+      resourceType: 'Patient',
+      date,
+    })
+  }
 
   const cy = laneY + laneHeight / 2
   const SQ = 24 // square side length

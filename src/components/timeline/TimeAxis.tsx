@@ -4,13 +4,12 @@ interface Props {
   zoom: number
   offset: number
   plotWidth: number
-  currentMonths: number
   totalHeight: number
 }
 
 const MIN_PX_BETWEEN_LABELS = 40
 
-export default function TimeAxis({ zoom, offset, plotWidth, currentMonths, totalHeight }: Props) {
+export default function TimeAxis({ zoom, offset, plotWidth, totalHeight }: Props) {
   const viewEnd = offset + plotWidth / zoom
 
   // Convert months to x in the full SVG coordinate space
@@ -94,22 +93,6 @@ export default function TimeAxis({ zoom, offset, plotWidth, currentMonths, total
         stroke="#A0B4C8" strokeWidth={1}
       />
 
-      {/* Current date label */}
-      {currentMonths >= offset && currentMonths <= viewEnd && (() => {
-        const x = toX(currentMonths)
-        return (
-          <text
-            x={x}
-            y={28}
-            textAnchor="middle"
-            fontSize={12}
-            fill="#94A3B8"
-            fontFamily="system-ui, sans-serif"
-          >
-            Today
-          </text>
-        )
-      })()}
     </g>
   )
 }

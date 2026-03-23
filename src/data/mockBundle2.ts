@@ -467,6 +467,14 @@ export const mockBundle2: FhirBundle = {
             code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
             valueCodeableConcept: { coding: [{ code: 'missense_variant', display: 'Missense variant (G12D)' }] },
           },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] },
+            valueString: 'c.35G>A',
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] },
+            valueString: 'p.Gly12Asp',
+          },
         ],
       },
     },
@@ -493,6 +501,14 @@ export const mockBundle2: FhirBundle = {
             code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
             valueCodeableConcept: { coding: [{ code: 'frameshift_variant', display: 'Frameshift variant' }] },
           },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] },
+            valueString: 'c.3927_3931del',
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] },
+            valueString: 'p.Glu1309Aspfs*4',
+          },
         ],
       },
     },
@@ -518,6 +534,14 @@ export const mockBundle2: FhirBundle = {
           {
             code: { coding: [{ system: 'http://loinc.org', code: '48006-1', display: 'Molecular consequence' }] },
             valueCodeableConcept: { coding: [{ code: 'missense_variant', display: 'Missense variant' }] },
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48004-6', display: 'DNA change (c.HGVS)' }] },
+            valueString: 'c.742C>T',
+          },
+          {
+            code: { coding: [{ system: 'http://loinc.org', code: '48005-3', display: 'Amino acid change (p.HGVS)' }] },
+            valueString: 'p.Arg248Trp',
           },
         ],
       },
@@ -690,6 +714,39 @@ export const mockBundle2: FhirBundle = {
             ),
           },
         }],
+      },
+    },
+
+
+    // ── Encounters (hospitalizations) ─────────────────────────────────────────
+    {
+      fullUrl: 'urn:uuid:enc2-diag',
+      resource: {
+        resourceType: 'Encounter', id: 'enc2-diag', status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+        type: [{ text: 'Initial staging workup — colonoscopy, CT TAP, MDT referral' }],
+        subject: PATIENT_REF,
+        period: { start: '2022-09-10', end: '2022-09-15' },
+      },
+    },
+    {
+      fullUrl: 'urn:uuid:enc2-surgery',
+      resource: {
+        resourceType: 'Encounter', id: 'enc2-surgery', status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+        type: [{ text: 'Post-operative care — laparoscopic sigmoid colectomy' }],
+        subject: PATIENT_REF,
+        period: { start: '2022-10-05', end: '2022-10-12' },
+      },
+    },
+    {
+      fullUrl: 'urn:uuid:enc2-folfox-ae',
+      resource: {
+        resourceType: 'Encounter', id: 'enc2-folfox-ae', status: 'finished',
+        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActCode', code: 'IMP', display: 'inpatient encounter' },
+        type: [{ text: 'FOLFOX adverse event — grade 3 nausea, dehydration, neuropathy' }],
+        subject: PATIENT_REF,
+        period: { start: '2023-02-18', end: '2023-02-22' },
       },
     },
 

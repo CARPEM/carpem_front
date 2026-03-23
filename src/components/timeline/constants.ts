@@ -24,13 +24,14 @@ export const SEMANTIC_TICKS: { months: number; label: string }[] = [
   { months: 72, label: 'Yr 6' },
 ]
 
-/** The five swim-lane rows, in order. Label arrays render as two lines. */
+/** The six swim-lane rows, in order. Label arrays render as two lines. */
 export const SWIM_LANES = [
-  { id: 'key-events',   label: ['KEY EVENTS &', 'DIAGNOSIS:'] },
-  { id: 'systemic',     label: ['SYSTEMIC', 'THERAPY:'] },
-  { id: 'rt-surgery',   label: ['RADIOTHERAPY', '& SURGERY:'] },
-  { id: 'imaging',      label: ['IMAGING &', 'PROCEDURES:'] },
-  { id: 'biobanking',   label: ['BIOBANKING', 'SAMPLES:'] },
+  { id: 'key-events',       label: ['KEY EVENTS &', 'DIAGNOSIS:'] },
+  { id: 'hospitalizations', label: ['HOSPITALI-', 'SATIONS:'] },
+  { id: 'systemic',         label: ['SYSTEMIC', 'THERAPY:'] },
+  { id: 'rt-surgery',       label: ['RADIOTHERAPY', '& SURGERY:'] },
+  { id: 'imaging',          label: ['IMAGING &', 'PROCEDURES:'] },
+  { id: 'biobanking',       label: ['BIOBANKING', 'SAMPLES:'] },
 ] as const
 
 export type SwimLaneId = typeof SWIM_LANES[number]['id']
