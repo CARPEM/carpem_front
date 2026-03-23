@@ -32,6 +32,13 @@
 - [x] Mock bundle placeholder (`src/data/mockBundle.ts`)
 - [x] CLAUDE.md — full spec encoded as session context
 - [x] Claude Code settings — npm permissions + PostToolUse typecheck hook
+- [x] **10 mock patients** — P1–P10 FHIR bundles with full genomic panels (c./p. HGVS), hospitalisations, encounters, lab observations, clinical notes (`src/data/`)
+- [x] **Swim lane: Hospitalisations** — inpatient encounter bars (#FFBB00), truncated label, hover tooltip (`HospitalizationsLane.tsx`)
+- [x] **Death marker** — deep-blue 'D' flag in Key Events lane + full-height vertical line spanning all lanes (`DeathLine.tsx`)
+- [x] **Molecular Panel — mutation table** — Gene (coloured bg) | p. | c. | VAF table replacing bar chart; deduplicated legend; luminance-based text contrast
+- [x] **Mock FHIR R4 server** — standalone Express server on port 3001; endpoints: `/metadata`, `/Patient`, `/Patient/:id`, `/Patient/:id/$everything` with pagination; see `FHIR_TASKS.md` and `mock-server/`
+- [x] **FHIR API client** (`src/lib/fhirApi.ts`) — `fetchPatientList()` + `fetchPatientEverything()` with Bundle.link[next] pagination; `VITE_FHIR_BASE_URL` env var
+- [x] **App wired to FHIR server** — `App.tsx` fetches patients on mount, loads bundles on demand; static bundle imports removed; resolves 1.3 GB memory issue
 
 ---
 
@@ -73,9 +80,7 @@
 - [x] **Keyboard shortcuts** — + / − for zoom on timeline canvas
 
 ### Integration
-- [ ] **FHIR API client** (`src/lib/fhirApi.ts`) — paginated `$everything` fetch with Bundle.link (rel=next) handling
-- [ ] **Patient selector / URL routing** — `/patient/:id` route, patient ID in page title bar
-- [ ] **Error & loading states** — skeleton loaders for each panel while FHIR bundle loads
+- [ ] **Patient selector / URL routing** — `/patient/:id` route so deep-linking to a patient works across page reloads
 
 ---
 

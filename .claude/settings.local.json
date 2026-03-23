@@ -20,7 +20,8 @@
       "Bash(find:*)",
       "Bash(grep -n \"deceasedBoolean\\\\|],\\\\s*$\\\\|entry: \\\\[\" /home/bastien/code/carpem_front/src/data/mockBundle.ts)",
       "Bash(wc -l /home/bastien/code/carpem_front/src/data/*.ts)",
-      "Bash(du -sh /home/bastien/code/carpem_front/src/data/*.ts)"
+      "Bash(du -sh /home/bastien/code/carpem_front/src/data/*.ts)",
+      "Bash(node -e \"console.log\\(typeof globalThis.btoa\\)\")"
     ]
   }
 }

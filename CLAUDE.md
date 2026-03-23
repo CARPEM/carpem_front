@@ -4,7 +4,7 @@
 FHIR R4-based read-only clinical dashboard for oncologists and data managers.
 Displays a single patient's full longitudinal oncology trajectory.
 Data source: CARPEM EDS RESTful API (`GET /fhir/R4/Patient/{id}/$everything`).
-During development: mock FHIR bundle from `src/data/mockBundle.ts`.
+During development: mock FHIR R4 server (`mock-server/`) running on port 3001, serving 10 fictional patients.
 
 ## Tech stack
 - **Framework**: React 19 + TypeScript 5 (Vite 6)
@@ -13,7 +13,7 @@ During development: mock FHIR bundle from `src/data/mockBundle.ts`.
 - **Global state**: Zustand — `src/store/timeline.ts` owns zoom/pan shared between timeline and biomarker sparklines
 - **Styling**: Tailwind CSS v3
 - **FHIR types**: `@types/fhir` — use `fhir4.*` namespace
-- **HTTP**: axios
+- **HTTP**: native `fetch` (`src/lib/fhirApi.ts`) — axios dependency retained but unused
 
 ## Layout (1920×1080 target, min 1440×900)
 Three-column layout, all panels full height, no page scroll.
@@ -74,25 +74,43 @@ ImagingStudy, DiagnosticReport, Observation, Specimen, DocumentReference.
 
 ## Folder structure
 ```
+mock-server/              Standalone Express FHIR R4 server (port 3001)
+  server.ts               Entry point — Express app, CORS, routes
+  routes/
+    metadata.ts           GET /fhir/R4/metadata → CapabilityStatement
+    patients.ts           GET /Patient, /Patient/:id, /Patient/:id/$everything
+  package.json            express, cors, tsx
+  tsconfig.json           NodeNext, paths @/* → ../src/*
+
 src/
   components/
     layout/       AppShell
     panels/       LeftPanel, CentrePanel, RightPanel
-    timeline/     (swim-lane sub-components, D3 hooks)
-    widgets/      PatientIdentifier, ClinicalNotes, MolecularPanel, BiomarkerSparkline
-    ui/           shared primitives (Tooltip, Drawer, Modal, Badge)
-  store/          Zustand stores (timeline.ts, patient.ts)
-  lib/            t0.ts, fhirApi.ts, formatters.ts
+    timeline/     swim-lane sub-components, D3 hooks
+      lanes/      KeyEventsLane, HospitalizationsLane, SystemicTherapyLane,
+                  RadioSurgeryLane, ImagingLane, BiobankingLane
+    widgets/      PatientIdentifier, ClinicalNotes, MolecularPanel, BiomarkerSparklines
+    ui/           SideDrawer, ProcedureDrawer, TooltipOverlay
+  store/          timeline.ts (zoom/pan), patient.ts, selection.ts
+  lib/            t0.ts, fhirApi.ts, formatters.ts, bundleUtils.ts
   types/          fhir.ts (re-exports fhir4.*)
-  data/           mockBundle.ts
+  data/           mockBundle.ts (P1), mockBundle2.ts (P2), mockBundlesExtra.ts (P3–P10)
 ```
 
-## Kanban board
-`TASKS.md` at project root is the persistent task board (Backlog / In Progress / Done).
-Read it at the start of every session to know what to work on next.
-Update it when a feature is completed or started.
+## Kanban boards
+- `TASKS.md` — main UI feature board. Read at session start; update when work starts/completes.
+- `FHIR_TASKS.md` — mock FHIR server board (server + app integration tasks).
 
 ## Commands
-- `npm run dev` — start dev server (Vite, port 5173)
-- `npm run typecheck` — TypeScript check (run after every non-trivial change)
-- `npm run build` — production build
+```bash
+# Web app (Vite dev server — port 5173)
+npm run dev
+npm run typecheck          # run after every non-trivial change
+npm run build
+
+# Mock FHIR server (port 3001) — must be running for the app to load data
+cd mock-server && npm start
+
+# Environment
+cp .env.example .env       # set VITE_FHIR_BASE_URL if the server runs elsewhere
+```
