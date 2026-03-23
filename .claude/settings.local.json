@@ -21,7 +21,9 @@
       "Bash(grep -n \"deceasedBoolean\\\\|],\\\\s*$\\\\|entry: \\\\[\" /home/bastien/code/carpem_front/src/data/mockBundle.ts)",
       "Bash(wc -l /home/bastien/code/carpem_front/src/data/*.ts)",
       "Bash(du -sh /home/bastien/code/carpem_front/src/data/*.ts)",
-      "Bash(node -e \"console.log\\(typeof globalThis.btoa\\)\")"
+      "Bash(node -e \"console.log\\(typeof globalThis.btoa\\)\")",
+      "Bash(git -C /home/bastien/code/carpem_front log --oneline --diff-filter=A -- README.md)",
+      "Bash(git -C /home/bastien/code/carpem_front show HEAD:README.md)"
     ]
   }
 }

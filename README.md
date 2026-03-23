@@ -6,15 +6,39 @@ FHIR R4 read-only clinical dashboard for oncologists and data managers at CARPEM
 
 ## Getting started
 
+Two processes must run simultaneously: the mock FHIR server and the Vite dev server.
+
 ```bash
+# 1 — Mock FHIR server (port 3001)
+cd mock-server
 npm install
-npm run dev        # dev server at http://localhost:5173
-npm run typecheck  # TypeScript check (run after every non-trivial change)
-npm run build      # production build
-npm run preview    # preview production build locally
+npm start
+
+# 2 — Web app (port 5173), in a separate terminal
+npm install
+npm run dev
+```
+
+Open http://localhost:5173. The app fetches the patient list from the FHIR server on startup and loads each patient's bundle on demand.
+
+```bash
+npm run typecheck   # TypeScript check — run after every non-trivial change
+npm run build       # production build
+npm run preview     # preview production build locally
 ```
 
 Minimum display resolution: 1440 × 900. Optimised for 1920 × 1080.
+
+---
+
+## Environment
+
+Copy `.env.example` to `.env` to override the FHIR server base URL:
+
+```bash
+cp .env.example .env
+# VITE_FHIR_BASE_URL=http://localhost:3001/fhir/R4
+```
 
 ---
 
@@ -22,7 +46,7 @@ Minimum display resolution: 1440 × 900. Optimised for 1920 × 1080.
 
 ```
 App.tsx
-└── AppShell             header + patient switcher
+└── AppShell             header + patient dropdown
     ├── LeftPanel (~18%)
     │   ├── PatientIdentifier
     │   └── ClinicalNotes
@@ -30,9 +54,11 @@ App.tsx
     │   └── TimelineCanvas  (D3 SVG, zoom/pan)
     │       ├── TimeAxis
     │       ├── ProgressionLines
+    │       ├── DeathLine
     │       ├── CurrentDateLine
-    │       └── SwimLaneRow × 5
+    │       └── SwimLaneRow × 6
     │           ├── KeyEventsLane
+    │           ├── HospitalizationsLane
     │           ├── SystemicTherapyLane
     │           ├── RadioSurgeryLane
     │           ├── ImagingLane
@@ -47,10 +73,25 @@ App.tsx
 | Store | File | Owns |
 |-------|------|------|
 | `usePatientStore` | `src/store/patient.ts` | All FHIR resources + computed T0 |
-| `useTimelineStore` | `src/store/timeline.ts` | zoom, offset, centralPlotWidth |
+| `useTimelineStore` | `src/store/timeline.ts` | zoom, offset, centralPlotWidth, hoverMonths |
 | `useSelectionStore` | `src/store/selection.ts` | selectedSpecimenId, selectedProcedureId |
 
-`useTimelineStore` is shared between `TimelineCanvas` and `BiomarkerSparklines` so that the sparklines always mirror the timeline's time window.
+`useTimelineStore` is shared between `TimelineCanvas` and `BiomarkerSparklines` so that sparklines always mirror the timeline's time window.
+
+---
+
+## Mock FHIR server (`mock-server/`)
+
+Standalone Express server implementing a minimal subset of the FHIR R4 HTTP API. It is the development replacement for the real CARPEM EDS.
+
+| Method | Endpoint | Returns |
+|--------|----------|---------|
+| `GET` | `/fhir/R4/metadata` | `CapabilityStatement` |
+| `GET` | `/fhir/R4/Patient` | `Bundle` (searchset) — 10 patients |
+| `GET` | `/fhir/R4/Patient/:id` | `Patient` resource or 404 `OperationOutcome` |
+| `GET` | `/fhir/R4/Patient/:id/$everything` | `Bundle` (collection, paginated via `?_count=N&_page=N`) |
+
+Data is served directly from the TypeScript mock bundles in `src/data/` — no duplication. See `FHIR_TASKS.md` for the server's development Kanban.
 
 ---
 
@@ -65,13 +106,13 @@ App.tsx
 | Sparklines | Recharts |
 | State | Zustand v5 |
 | FHIR types | `@types/fhir` (`fhir4.*` namespace) |
-| HTTP | axios (wired but unused in mock mode) |
+| HTTP | native `fetch` (`src/lib/fhirApi.ts`) |
 
 ---
 
 ## FHIR data model
 
-The app consumes a single FHIR R4 `Bundle` (result of `GET /fhir/R4/Patient/{id}/$everything`). During development, mock bundles are used from `src/data/`.
+The app consumes a single FHIR R4 `Bundle` returned by `GET /fhir/R4/Patient/{id}/$everything`.
 
 ### Resource types used
 
@@ -79,12 +120,13 @@ The app consumes a single FHIR R4 `Bundle` (result of `GET /fhir/R4/Patient/{id}
 |----------|---------|
 | `Patient` | Demographics, vital status |
 | `Condition` | Diagnoses, progression events; T0-anchor extension |
+| `Encounter` | Inpatient hospitalisations (class `IMP`) |
 | `MedicationAdministration` | Systemic therapy doses |
 | `MedicationRequest` | Prophylactic intent flag |
 | `Procedure` | Surgery (SNOMED 387713003), Radiotherapy (108290001) |
 | `ImagingStudy` | Imaging events with modality |
 | `DiagnosticReport` | Molecular panel linked to specimens |
-| `Observation` | Biomarkers, staging (TNM), progression (LOINC 21976-6), somatic variants |
+| `Observation` | Biomarkers, staging (TNM), progression (LOINC 21976-6), somatic variants (LOINC 69548-6) |
 | `Specimen` | Biobanked samples; collection-context extension |
 | `DocumentReference` | Clinical notes (base64 text attachments) |
 
@@ -106,7 +148,7 @@ Defined in `src/lib/t0.ts`.
 
 All timeline positions are expressed as **months from T0**: `(event.date − T0) / 30.44`.
 
-Temporal label format (see `src/lib/formatters.ts`):
+Temporal label format (`src/lib/formatters.ts`):
 
 | Delta | Label |
 |-------|-------|
@@ -120,23 +162,14 @@ Temporal label format (see `src/lib/formatters.ts`):
 
 | Lane | ID | Content | Visual |
 |------|----|---------|--------|
-| Key Events & Diagnosis | `key-events` | Conditions, T0 anchor | Coloured squares: DX (teal), Progression (red) |
+| Key Events & Diagnosis | `key-events` | Conditions, death marker | Coloured squares: DX (teal), Progression (red), Death (dark blue) |
+| Hospitalisations | `hospitalizations` | Encounters (class `IMP`) | Yellow bars (`#FFBB00`) with truncated label |
 | Systemic Therapy | `systemic` | MedicationAdministration | Horizontal bars + numbered dose circles |
 | Radiotherapy & Surgery | `rt-surgery` | Procedure | Surgery: scalpel icon; RT: filled rectangle over duration |
-| Imaging & Procedures | `imaging` | ImagingStudy | Downward triangle (outline) with modality label |
-| Biobanking Samples | `biobanking` | Specimen | Icon by type: tube (blood/serum/plasma), biopsy (tissue), tube (FFPE/block) |
+| Imaging & Procedures | `imaging` | ImagingStudy | Downward triangle with modality label |
+| Biobanking Samples | `biobanking` | Specimen | Icon by type: tube / biopsy / funnel |
 
-Lane heights are set in `TimelineCanvas.tsx` (`laneHeights` map). The Systemic Therapy lane is 2× the default `LANE_HEIGHT`.
-
-### Progression lines
-
-Full-height red vertical lines (`ProgressionLines.tsx`) are rendered **outside** the per-lane `<clipPath>` so they span the entire timeline height. They are driven by:
-- Non-T0-anchor `Condition` resources with `onsetDateTime`
-- `Observation` resources with LOINC code `21976-6` (Disease progression panel)
-
----
-
-## Coding schemes
+Full-height decorative lines (`ProgressionLines.tsx`, `DeathLine.tsx`) are rendered **outside** the per-lane `<clipPath>` so they span the entire timeline height.
 
 ### Drug classification (ATC) — SystemicTherapyLane
 
@@ -147,7 +180,27 @@ Full-height red vertical lines (`ProgressionLines.tsx`) are rendered **outside**
 | `L02` | Hormone therapy | `#D97706` |
 | `L01` (other) | Chemotherapy | `#4A7FB5` |
 
-### Biomarker LOINC codes — BiomarkerSparklines
+---
+
+## Molecular Panel
+
+Displays somatic variants for the selected specimen (default: most recent biopsy). Variants are shown in a table — Gene (coloured by variant type) | p. | c. | VAF — sorted by descending VAF, max 8 rows.
+
+### Variant LOINC components
+
+| LOINC | Component |
+|-------|-----------|
+| 48018-6 | Gene studied |
+| 81258-6 | Allelic frequency (VAF) |
+| 48006-1 | Molecular consequence (variant type) |
+| 48004-6 | DNA change (c.HGVS) |
+| 48005-3 | Amino acid change (p.HGVS) |
+
+---
+
+## Biomarker Sparklines
+
+One Recharts line chart per biomarker for all `Observation` resources in category `laboratory`. The X-axis domain mirrors the timeline's zoom/pan state in real time.
 
 | LOINC | Label | Unit |
 |-------|-------|------|
@@ -163,15 +216,7 @@ Full-height red vertical lines (`ProgressionLines.tsx`) are rendered **outside**
 | 6768-6 | Alk Phos | U/L |
 | 1975-2 | Bilirubin | mg/dL |
 
-Only markers that have matching observations in the loaded bundle are shown. Reference ranges are read from `Observation.referenceRange[0].high`. Values above the upper limit are highlighted red.
-
-### Somatic variant LOINC components — MolecularPanel
-
-| LOINC | Component |
-|-------|-----------|
-| 48018-6 | Gene studied |
-| 81258-6 | Allelic frequency (VAF) |
-| 48006-1 | Molecular consequence (variant type) |
+Reference ranges are read from `Observation.referenceRange[0].high`. Values above the upper limit are highlighted red.
 
 ---
 
@@ -190,89 +235,87 @@ Zoom/pan state is synced to URL parameters (`?zoom=N&offset=M`) for bookmarking.
 
 ---
 
-## Mock patient data
+## Mock patients
 
-Development data lives in `src/data/`:
+10 fictional patients are served by the mock FHIR server. Each has a full genomic panel (c./p. HGVS), hospitalisations, lab observations, and clinical notes. The switcher in the top nav shows each patient's research ID (`CARPEM-YYYY-NNNNN`).
 
-| File | Patients |
-|------|---------|
-| `mockBundle.ts` | P1 — Marie Dupont, 52F, Breast cancer (HR+/HER2−, BRCA1) |
-| `mockBundle2.ts` | P2 — Jean Martin, 77M, Sigmoid colon adenocarcinoma (KRAS G12D) |
-| `mockBundlesExtra.ts` | P3–P10 — diverse oncology profiles (see below) |
-
-### Patients P3–P10
-
-| # | Name | Age/Sex | Tumour |
-|---|------|---------|--------|
-| 3 | Sophie Laurent | 38F | Cervical SCC HPV16 |
-| 4 | Robert Lefevre | 65M | NSCLC EGFR del19 |
-| 5 | Isabelle Moreau | 58F | Ovarian HGSOC BRCA2 |
-| 6 | Alexandre Petit | 47M | Melanoma BRAF V600E |
-| 7 | Marguerite Blanc | 72F | AML FLT3-ITD |
-| 8 | Henri Rousseau | 55M | mCRPC |
-| 9 | Camille Fontaine | 44F | TNBC BRCA1 |
-| 10 | Pierre Garnier | 69M | Pancreatic PDAC |
-
-To add a new patient, create a `fhir4.Bundle` following the existing pattern and add it to the `BUNDLES` array in `App.tsx`.
+| # | Research ID | Tumour |
+|---|-------------|--------|
+| 1 | CARPEM-2021-00123 | Breast cancer HR+/HER2+ (PIK3CA, TP53, BRCA1) |
+| 2 | CARPEM-2022-00456 | Sigmoid colon adenocarcinoma (KRAS G12D, APC, TP53) |
+| 3 | CARPEM-2021-00789 | Cervical SCC HPV16+ (PIK3CA, TP53, FBXW7) |
+| 4 | CARPEM-2020-01012 | NSCLC EGFR del19 (EGFR, TP53, STK11) |
+| 5 | CARPEM-2019-01345 | Ovarian HGSOC BRCA2 (BRCA2, TP53, CCNE1) |
+| 6 | CARPEM-2022-01678 | Melanoma BRAF V600E (BRAF, NF1, PTEN) |
+| 7 | CARPEM-2023-01901 | AML FLT3-ITD (FLT3, NPM1, DNMT3A) |
+| 8 | CARPEM-2018-02234 | Prostate mCRPC (TP53, PTEN, CDK12) |
+| 9 | CARPEM-2023-02567 | TNBC BRCA1 (BRCA1, TP53, RB1) |
+| 10 | CARPEM-2024-02890 | Pancreatic PDAC (KRAS, TP53, CDKN2A, SMAD4) |
 
 ---
 
 ## File structure
 
 ```
+mock-server/
+  server.ts                    Express entry point (port 3001)
+  routes/
+    metadata.ts                GET /fhir/R4/metadata
+    patients.ts                GET /Patient, /Patient/:id, /Patient/:id/$everything
+  package.json
+  tsconfig.json
+
 src/
-  App.tsx                      Root: patient switcher, bundle loading
+  App.tsx                      Root: patient dropdown, FHIR fetch, error banner
   main.tsx
   types/
     fhir.ts                    Re-exports of fhir4.* types + MonthsFromT0
   lib/
-    t0.ts                      computeT0(), toMonthsFromT0(), T0_ANCHOR_URL
-    formatters.ts              formatDate(), formatTemporalLabel(), ageInYears(), …
+    t0.ts                      computeT0(), toMonthsFromT0()
+    formatters.ts              formatDate(), formatTemporalLabel(), …
     bundleUtils.ts             getResources<K>(), getPatient()
-    fhirApi.ts                 (unused in mock mode) axios FHIR client
+    fhirApi.ts                 fetchPatientList(), fetchPatientEverything()
   store/
-    patient.ts                 usePatientStore — FHIR resources + T0
-    timeline.ts                useTimelineStore — zoom, offset, centralPlotWidth
-    selection.ts               useSelectionStore — selected specimen / procedure
+    patient.ts                 usePatientStore
+    timeline.ts                useTimelineStore
+    selection.ts               useSelectionStore
   data/
     mockBundle.ts              Patient 1
     mockBundle2.ts             Patient 2
     mockBundlesExtra.ts        Patients 3–10
   components/
     layout/
-      AppShell.tsx             Top nav + three-column shell
+      AppShell.tsx
     panels/
       LeftPanel.tsx
-      CentrePanel.tsx          Zoom controls + TimelineCanvas wrapper
+      CentrePanel.tsx
       RightPanel.tsx
     timeline/
-      constants.ts             LABEL_WIDTH, LANE_HEIGHT, SWIM_LANES, SEMANTIC_TICKS, …
-      types.ts                 MarkerInfo, TooltipState
-      TimelineCanvas.tsx       SVG canvas, zoom/pan, ResizeObserver, tooltip portal
-      TimeAxis.tsx             Semantic ticks + minor gridlines
-      SwimLaneRow.tsx          Label column + clipPath wrapper
-      ProgressionLines.tsx     Full-height red progression lines (outside clipPath)
-      CurrentDateLine.tsx      Vertical "today" line
-      TooltipOverlay.tsx       Fixed-position tooltip (portalled to document.body)
-      ZoomControls.tsx         +/− buttons
+      constants.ts
+      TimelineCanvas.tsx
+      TimeAxis.tsx
+      SwimLaneRow.tsx
+      ProgressionLines.tsx
+      DeathLine.tsx
+      CurrentDateLine.tsx
+      TooltipOverlay.tsx
+      ZoomControls.tsx
+      CursorLine.tsx
       lanes/
-        KeyEventsLane.tsx      DX + progression squares
-        SystemicTherapyLane.tsx  Drug bars + dose circles
-        RadioSurgeryLane.tsx   Scalpel icon / RT rectangle
-        ImagingLane.tsx        Triangle markers
-        BiobankingLane.tsx     Tube / biopsy / funnel icons
+        KeyEventsLane.tsx
+        HospitalizationsLane.tsx
+        SystemicTherapyLane.tsx
+        RadioSurgeryLane.tsx
+        ImagingLane.tsx
+        BiobankingLane.tsx
     widgets/
-      PatientIdentifier.tsx    Demographics, primary tumour, stage
-      ClinicalNotes.tsx        Document snippets + modal
-      MolecularPanel.tsx       Somatic variant waterfall, actionable findings
-      BiomarkerSparklines.tsx  Recharts line charts, shared time domain
+      PatientIdentifier.tsx
+      ClinicalNotes.tsx
+      MolecularPanel.tsx
+      BiomarkerSparklines.tsx
     ui/
-      SideDrawer.tsx           Slide-in drawer shell
-      ProcedureDrawer.tsx      Procedure detail view inside SideDrawer
-  icons/                       Source SVG files for inline paths
-    scalpel.svg
-    tube.svg
-    biopsy.svg
+      SideDrawer.tsx
+      ProcedureDrawer.tsx
 ```
 
 ---
@@ -282,5 +325,6 @@ src/
 - **Read-only**: no data entry or annotation.
 - **Single patient session**: switching patients resets all selections and zoom.
 - **DICOM thumbnails**: imaging marker click-card is not yet implemented (planned).
-- **Real API**: `src/lib/fhirApi.ts` is scaffolded but unused; replace mock bundles with live `$everything` calls to connect to the CARPEM EDS.
-- **Localisation**: dates are formatted in `fr-FR` locale; labels are in English.
+- **URL routing**: no `/patient/:id` deep-link support yet; the dropdown always resets to patient 1 on page reload.
+- **Real API**: replace `VITE_FHIR_BASE_URL` with the production CARPEM EDS endpoint to connect to live data.
+- **Localisation**: dates are formatted in `fr-FR` locale; UI labels are in English.
