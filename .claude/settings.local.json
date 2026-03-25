@@ -23,7 +23,14 @@
       "Bash(du -sh /home/bastien/code/carpem_front/src/data/*.ts)",
       "Bash(node -e \"console.log\\(typeof globalThis.btoa\\)\")",
       "Bash(git -C /home/bastien/code/carpem_front log --oneline --diff-filter=A -- README.md)",
-      "Bash(git -C /home/bastien/code/carpem_front show HEAD:README.md)"
+      "Bash(git -C /home/bastien/code/carpem_front show HEAD:README.md)",
+      "Bash(curl -s \"http://localhost:3001/fhir/R4/cohort/analytics\")",
+      "Bash(curl -s \"http://localhost:3001/fhir/R4/cohort/analytics?bodySite=Breast\")",
+      "Bash(python3 -c \":*)",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s \"http://localhost:3001/fhir/R4/cohort/analytics?phase=full\")",
+      "Read(//tmp/**)",
+      "Bash(curl -v \"http://localhost:3001/fhir/R4/cohort/analytics?phase=full\")"
     ]
   }
 }

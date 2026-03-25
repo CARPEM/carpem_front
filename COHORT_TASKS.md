@@ -9,109 +9,178 @@
 
 ## Done
 
-*(move cards here when work is complete)*
+### Phase 0 — Foundation
+- [x] **React Router v6** — `react-router-dom` installed; `<BrowserRouter>` in `main.tsx`; routes `/cohort` → `CohortView`, `/patient/:id` → `PatientView`, `/patient` → `PatientRedirect`; `/` → `/cohort`
+- [x] **AppShell nav toggle** — "COHORT" / "PATIENT 360°" `NavLink` tabs with active highlight; switcher + title bar moved into `PatientView`
+- [x] **`CohortAnalyticsResponse` type** — `src/types/cohortAnalytics.ts`
+- [x] **Mock server analytics endpoint** — `mock-server/routes/cohortAnalytics.ts`: server-side aggregation; gender / age bins / stages / mutations / surgery / chemo / RT / KM (OS + PFS); filter params
+- [x] **Register cohort route** — `mock-server/server.ts`
+- [x] **`src/lib/cohortApi.ts`** — `fetchCohortAnalytics(filters, phase)`
+- [x] **Zustand cohort store** — `src/store/cohort.ts`
+- [x] **Cohort view layout shell** — `src/views/CohortView.tsx`: two-zone layout, N counter, Cohort Type selector, left filter panel, 3-row grid
+- [x] **`ChartPanel` frame component** — `src/components/cohort/ChartPanel.tsx`
+
+### Phase 1 — Left Panel: Filter Controls
+- [x] **Reset filters button** — wired to `resetFilters()`
+- [x] **Cohort Summary Widget** — "N=X" wired to `analytics.n`
+- [x] **Data Elements Filter** — type / metric dropdowns in place
+- [x] **Filter by Mutations** — bodySite + gene inputs wired to `setFilter()`
+- [x] **Gender / Stage filters** — dropdowns wired to `setFilter()`
+
+### Phase 2 — Main Grid Row 1: Demographics (spec §4.1–4.3)
+- [x] **Gender Distribution donut** — `GenderDistribution.tsx`; Female/Male/Other/Unknown segments with CARPEM colours; custom legend + tooltip; click-to-filter on gender
+- [x] **Age at Diagnosis bar chart** — `AgeAtDiagnosis.tsx`; decade bins; mean annotation; CARPEM teal bars
+- [x] **Cancer Stage Distribution bar chart** — `CancerStageDistribution.tsx`; value labels above bars; CARPEM green; click-to-filter on stage
+
+### Phase 3 — Main Grid Row 2: Key Somatic Mutations (spec §4.4)
+- [x] **Key Somatic Mutations waterfall** — `KeySomaticMutations.tsx`; SVG OncoPrint horizontal stacked bars; Y-axis genes ordered by descending frequency; X-axis 0–100% with gridlines at 0/50/100; segments coloured by variant type; grey track background; right-hand % label; dimming of non-selected genes on filter; hover tooltip; click-to-filter on gene row; search input + funnel icon in ChartPanel header (`MutationSearch` exported); mutation legend below chart
+- [x] **Variant dual-detection fix** — `computeMutations` + `filterBundles` gene filter match by `genomic-variant` category **OR** LOINC `69548-6`; covers P1/P2 mock bundles that use `'laboratory'` category
+
+### Phase 3b — OncoPrint Matrix (replaces waterfall bar chart)
+- [x] **OncoPrint data type** — `OncoPrintAlteration`, `OncoPrintGene`, `OncoPrintData` in `cohortAnalytics.ts`; `oncoPrint` field replaces `mutations` in `CohortAnalyticsResponse`
+- [x] **`computeOncoPrint()` server function** — builds patient × gene matrix; patients sorted most-altered first; genes sorted by pct desc, top 10; each cell = `OncoPrintAlteration[] | null`
+- [x] **OncoPrint SVG component** — `KeySomaticMutations.tsx` rewritten as gene × patient matrix; per-patient summary alteration bar at top; cells coloured by variant type, multi-mutation cells split vertically; unaltered cells in light grey; GOI amber dot; click-to-filter on gene rows; hover tooltip (gene, patient #, type(s)); search still works (filters gene rows); mutation legend unchanged
+
+### Phase 4 — Main Grid Row 3: Survival & Treatment Mix (spec §4.5–4.9)
+- [x] **`KMChart.tsx`** — shared D3 v7 Kaplan-Meier component: step function (`curveStepAfter`); 95% CI shaded band; dashed extension at last observed value; X-axis in years; Y-axis in % surviving; gridlines; hover overlay with bisect → tooltip (t, S(t), 95% CI, N at risk); `ResizeObserver` for responsive sizing
+- [x] **Overall Survival KM** — `OverallSurvivalKM.tsx`; CARPEM teal `#1A7F8E`; source `analytics.osCurve`
+- [x] **Progression-Free Survival KM** — `ProgressionFreeSurvivalKM.tsx`; CARPEM blue `#4A7FB5`; source `analytics.pfsCurve`
+- [x] **Surgery Mix bar chart** — `SurgeryMix.tsx`; Recharts vertical bars; alternating CARPEM palette; truncated procedure names on X-axis; full name in tooltip; N + % labels
+- [x] **Chemotherapy Mix bar chart** — `ChemotherapyMix.tsx`; Recharts vertical bars; colour-coded by class (Standard=blue, Immuno=purple, Targeted=green, Hormone=orange); N + % tooltip
+- [x] **Radiotherapy Mix bar chart** — `RadiotherapyMix.tsx`; Recharts vertical bars; purple `#7B4FBC`; truncated RT type names; N + % tooltip
 
 ---
 
-## In Progress
+### Phase 0b — Expand Mock Patient Population
+- [x] **30 synthetic patients in `mock-server/data/syntheticPatients.ts`** — 16F/14M; Stage I×6, II×9, III×9, IV×6; 9 deceased (→ 10 OS events with real bundles); 23 PFS events; body sites: Breast/Colon/Lung/Ovary; treatments: Standard chemo × 17, Immuno × 6, Targeted × 5, Hormone × 2; Surgery: Resection × 7, Mastectomy × 6, Lumpectomy × 2; RT: Adjuvant × 7, Palliative × 4; server-side only, never sent to client
+- [x] **Stage normaliser consolidated** to four buckets (I/II/III/IV) for cleaner bar chart display
 
-*(move cards here when work begins)*
+Result: N=40 | OS: 11-point curve S(∞)=71.8% | PFS: 24-point curve S(∞)=19.4%
 
 ---
 
 ## Backlog
 
-### Phase 0 — Foundation & Routing
 
-- [ ] **View routing** — add React Router (or simple state router) to switch between Patient 360° view and Cohort view; shared AppShell nav bar with view toggle; URL: `/cohort`
-- [ ] **Cohort AppShell / layout** — two-zone layout: Left Panel (~20%) + Main Grid (~80%); page title bar "FULL COHORT ANALYTICS DASHBOARD (N=X)" with dynamic N counter; fits 1920×1080 without scroll
-- [ ] **Cohort Zustand store** — `src/store/cohort.ts`: active filters (data elements, mutations, cohort type), aggregated chart data (received from server), N count; filter changes trigger a new API call
-- [ ] **Cohort analytics API endpoint** — `mock-server/routes/cohortAnalytics.ts`: `GET /fhir/R4/cohort/analytics?{filterParams}`; the mock server iterates over its in-memory patient bundles, computes aggregations server-side, and returns a lightweight JSON response with only the pre-computed chart data (gender counts, age bins, stage distribution, mutation frequencies, treatment mix, KM curve points); **no raw bundles are sent to the client**
-- [ ] **Cohort API client** — `src/lib/cohortApi.ts`: `fetchCohortAnalytics(filters)` → GET `/fhir/R4/cohort/analytics?{filterParams}`; returns typed `CohortAnalyticsResponse`; filter params: `subject:Patient.gender`, `code`, `Condition.bodySite`, gene filter, stage filter
-- [ ] **CohortAnalyticsResponse type** — `src/types/cohortAnalytics.ts`: typed interface for the aggregated response: `{ n: number, gender: {label,count}[], ageBins: {range,count}[], stages: {stage,count}[], mutations: {gene,variants:{type,count}[],pct}[], surgeryMix: {category,count,pct}[], chemoMix: {regimen,count,pct}[], rtMix: {type,count,pct}[], osCurve: KMPoint[], pfsCurve: KMPoint[] }`
 
-### Phase 0b — Expand Mock Patient Population (optional)
+### Phase 5 — Cohort Type Selector & Cross-Chart Interactions (spec §5, §7) ✓
 
-- [ ] **Add simple patients to mock FHIR server** — add 20–40 minimal patients (Patient + Condition + a few Observations + a Procedure or MedicationAdministration each) directly in the mock server data; focus on: varied genders, age spread, different cancer stages, more deceased patients for meaningful KM curves; these are server-side only and never sent as full bundles to the client
+- [x] **Cohort Type selector dropdown** — wired in `CohortView` title bar; options Full Trial / Breast / Ovarian / Colorectal / Lung mapped to `bodySite` filter values; controlled select reads `filters.bodySite`; selection calls `setFilter('bodySite', …)` → immediate re-fetch; synced with the left-panel Tumour Location text input (both write `filters.bodySite`)
+- [x] **Click-to-filter wiring confirmed** — `GenderDistribution` (click segment → `setFilter('gender')`), `CancerStageDistribution` (click bar → `setFilter('stage')`), `KeySomaticMutations` (click row → `setFilter('gene')`); all toggle on second click; additive AND across axes; treatment mix charts (no additional filter keys in spec)
+- [x] **URL state persistence** — `useSearchParams` in `CohortView`; on mount restores `gender`, `stage`, `bodySite`, `gene` from URL query string via `setFilters()` (single fetch); on every filter change syncs URL with `{ replace: true }` (no PHI — only aggregate values); `setFilters` batch action added to cohort store
 
-### Phase 1 — Left Panel: Filter Controls (§3)
+---
 
-- [ ] **Cohort Summary Widget** — large "N=X" typographic counter with "COHORT SUMMARY" label; updates in real time as filters are applied; reads N from the `CohortAnalyticsResponse`
-- [ ] **Data Elements Filter** — collapsible "DATA ELEMENTS" section with expand/collapse chevron; three cascading dropdowns: (1) Filter by Data Element type (All Data Elements, Demographics, Genomics, Treatment, Survival), (2) Filter by Category (dependent on first), (3) Data Elements metric (Percent of Patients / Absolute Count); each selection triggers a new API call with updated filter params
-- [ ] **Filter by Mutations** — two-level mutation filter below Data Elements: (1) Tumor Location dropdown → Condition.bodySite, (2) Tumor Location laterality → bodySite laterality extension, (3) Free-text/coded value selector (e.g. "Unknown"); sent as filter params to the analytics endpoint
-- [ ] **Reset filters button** — clears all active filters, re-fetches unfiltered analytics; restores N to total enrolled; positioned at top of left panel
+### Phase 6 — Layout, Shared Components & Polish
 
-### Phase 2 — Main Grid Row 1: Demographics (§4.1–4.3)
+- [ ] **Responsive grid layout** — 3-row grid at exact proportions from spec; no page scroll at 1920×1080; min supported 1440×900
+- [ ] **Cohort hover tooltip component** — `src/components/cohort/CohortTooltip.tsx`: consistent tooltip across all chart panels
+- [ ] **Two-phase progressive rendering** — fetch `?phase=demographics` first → render Row 1; then `?phase=full` → render Rows 2 & 3; skeleton loaders in pending panels
 
-- [ ] **Gender Distribution** — Recharts donut chart; segments: Female (red), Male (blue), Other (orange), Unknown (grey); external legend with category + percentage; hover → absolute N + %; click segment → filters cohort by gender; source: `response.gender`
-- [ ] **Age at Diagnosis** — Recharts vertical bar chart; X-axis bins: ≤39, 30–39, 40–49, 50–59, 60–69, 70–79, 80–89, 90+; Y-axis: patient count; bar colour: CARPEM teal (#1A7F8E); "Mean: X.X" annotation above chart; hover → bin range + N; click → applies age-range filter; source: `response.ageBins`
-- [ ] **Cancer Stage Distribution** — Recharts vertical bar chart; X-axis: Stage I, II, III, IV, Unknown; Y-axis: patient count (absolute); bar value labels above each bar; bar colour: green (#2E7D4F); hover → stage + N; click → applies stage filter; source: `response.stages`
+---
 
-### Phase 3 — Main Grid Row 2: Genomics & Surgery (§4.4–4.5)
+### Phase 7 — Non-Functional Requirements (spec §8, §10)
 
-- [ ] **Key Somatic Mutations waterfall** — D3 horizontal stacked bar chart (OncoPrint-style); ~55% main grid width; Y-axis: top 8–10 genes by descending mutation frequency; X-axis: 0–100% with ticks at 0/50/100; bars segmented by variant type: Missense (blue), Nonsense (orange), Splice Site (teal/green), Disruptive nonsense (purple), Other (grey); colour legend below chart ("MUTATION LEGEND:"); right-hand % label per gene row; metric toggle driven by Data Elements dropdown (Percent of Patients / Absolute Count); search/filter input + magnifying glass icon in panel header; hover → gene name + variant type + N/%; click gene row → filters cohort; source: `response.mutations`
-- [ ] **Surgery Mix** — Recharts vertical bar chart; positioned right of mutations panel (~45% row width); X-axis: Lumpectomy, Standard, Target, Combination (+ additional coded types); Y-axis: patient count; % labels above bars; alternating CARPEM palette (teal, orange, blue, green); hover → category + N/%; click → filters cohort; source: `response.surgeryMix`
-
-### Phase 4 — Main Grid Row 3: Survival & Treatment Mix (§4.6–4.9)
-
-- [ ] **Overall Survival (Kaplan-Meier)** — D3 step function chart; X-axis: years (0–5+); Y-axis: % Surviving (0–100%); 95% CI shaded band; up to 4 stratification curves colour-coded; inline legend; hover → time point + survival probability + N at risk + 95% CI; source: `response.osCurve` (KM computed server-side); N < 5 per stratum → "Insufficient data" placeholder
-- [ ] **Progression-Free Survival (KM)** — identical to OS panel structure; event = first progression (Observation RECIST/LOINC 21976-6) or death; title: "PROGRESSION-FREE SURVIVAL (Kaplan-Meier)"; source: `response.pfsCurve`
-- [ ] **Chemotherapy Mix** — Recharts vertical bar chart; X-axis: Standard, Target, Combination (+ additional regimen types); Y-axis: patient count; % labels above bars; bar colours: Blue (#4A7FB5) Standard, Orange (#D97706) Target, Purple (#7B4FBC) Combination — consistent with Patient 360° ATC scheme; hover tooltip; click → filters cohort; source: `response.chemoMix`
-- [ ] **Radiotherapy Mix** — Recharts vertical bar chart; X-axis: Adjuvant Radiotherapy (+ additional coded types: Curative, Palliative); Y-axis: patient count; % labels above bars; bar colour: Purple (#7B4FBC); hover tooltip; click → filters; source: `response.rtMix`
-
-### Phase 5 — Cohort Type Selector & Interactions (§5, §7)
-
-- [ ] **Cohort Type selector dropdown** — top-right of page title bar; breadcrumb-style label (e.g. "Full Trial / Breast (Left) / Other"); options dynamically populated from config: Full Trial, by cancer type (Breast, Ovarian, Liver…), by laterality/histology sub-group; selection triggers new API call with Condition.code + bodySite filter; N counter + all panels re-render; selected state persisted in URL query params
-- [ ] **Click-to-filter on all charts** — clicking any bar/donut segment/KM stratum/gene row applies that value as an additional cohort filter; triggers new API call; all panels re-render; N counter updates; filters are additive (logical AND)
-- [ ] **URL state persistence** — encode active cohort type + all filter params in URL query string for shareability; no PHI in URL (no patient IDs, only aggregate filter values like stage=II)
-
-### Phase 6 — Shared Components & Polish
-
-- [ ] **Chart panel frame component** — reusable panel wrapper: title (small uppercase), optional subtitle, 1px border, white background, independent scroll if content overflows; shared across all 9 chart panels
-- [ ] **Hover tooltip component (cohort)** — consistent tooltip across all chart panels: label + N + %; KM curves: time point + survival probability + N at risk + 95% CI
-- [ ] **Responsive grid layout** — 3-row grid with correct proportions: Row 1 (summary + 3 charts), Row 2 (mutations ~55% + surgery ~45%), Row 3 (4 charts equal width); all panels equal height per row; no page scroll at 1920×1080
-
-### Phase 7 — Accessibility & Non-Functional
-
-- [ ] **Keyboard navigation** — Tab/Enter/Escape on all chart elements and filters; ARIA labels on chart regions
-- [ ] **Statistical validity guard** — KM curves: do not render when N < 5 per stratum; show "Insufficient data" placeholder
-- [ ] **Loading states** — skeleton loaders while analytics API responds; error state if server unreachable
+- [ ] **KM statistical validity guard** — do not render KM curves when N < 5 per stratum; display "Insufficient data" text placeholder instead
+- [ ] **Internationalisation** — primary language French (spec §10); date labels YYYY-MM-DD
+- [ ] **Accessibility — WCAG 2.1 AA** (spec §8.4) — keyboard navigation, ARIA labels, colour not used as sole encoding
+- [ ] **Read-only enforcement** — no write operations to FHIR resources
+- [ ] **No PHI in URL** — audit all `navigate()` calls in cohort view
 
 ---
 
 ## Architecture
 
 ### Data flow
+
 ```
-Client (cohort view)                    Mock FHIR Server (port 3001)
-─────────────────────                   ────────────────────────────
+Client (CohortView)                     Mock FHIR Server (port 3001)
+────────────────────                    ────────────────────────────
 CohortView mounts
   │
   ├─► GET /fhir/R4/cohort/analytics ──► Server iterates over in-memory
-  │   ?gender=female&stage=III          patient bundles, applies filters,
-  │                                     computes aggregations
-  │                                       │
-  │   ◄── CohortAnalyticsResponse ──────┘
-  │   (lightweight JSON: counts,        Only aggregated numbers are
-  │    percentages, KM points)          returned — no raw bundles
+  │   ?phase=demographics               patient bundles, applies filters,
+  │                                     computes aggregations server-side
+  │   ◄── gender + ageBins + stages ───┘
+  │   → Row 1 panels render
   │
-  ├─► Zustand store updated
-  ├─► All chart panels re-render
-  └─► N counter updates
+  ├─► GET /fhir/R4/cohort/analytics ──► Server computes heavier aggregations
+  │   ?phase=full                       (KM curves, mutation frequencies,
+  │                                      treatment mix)
+  │   ◄── mutations + surgery +
+  │       chemo + rt + KM curves
+  │   → Rows 2 & 3 panels render
+  │
+  └─► Filter applied (e.g. gender=female)
+      GET /fhir/R4/cohort/analytics
+      ?gender=female&phase=full
+      ◄── re-aggregated response
+      Only aggregated numbers returned —
+      no raw bundles sent to client
 ```
 
-### Key principle
-**All aggregation happens server-side** (in the mock server during dev, in the production FHIR analytics API later). The client receives only pre-computed chart data — never raw patient bundles. This keeps the browser memory footprint minimal and mirrors the production architecture.
+### Key principles
+
+- **All aggregation is server-side.** The mock server iterates its in-memory patient bundles, applies filters, and returns only pre-computed chart data — never raw bundles. Mirrors production FHIR analytics architecture.
+- **Phase 0b expands the population.** The 10 development patients are sufficient for wiring but produce poor distributions. Adding 20–40 lightweight patients server-side gives meaningful KM curves, age spreads, and stage distributions.
+- **Additive filters (logical AND).** Every filter selection re-queries the API. Filter state lives in the Zustand cohort store and is persisted in the URL (no PHI).
+- **Variant dual-detection.** Genomic variant observations matched by `genomic-variant` category OR LOINC `69548-6` to cover P1/P2 mock data inconsistency.
+
+### Grid layout reference
+
+```
+┌─ Left Panel (~20%) ──┬─ Main Grid (~80%) ──────────────────────────────────────┐
+│ Reset Filters        │ Row 1: [Cohort Summary] [Gender] [Age at DX] [Stage]     │
+│ Cohort Summary N=X   ├─────────────────────────────────────────────────────────┤
+│ DATA ELEMENTS        │ Row 2: [Key Somatic Mutations — full width              ] │
+│  └ Type dropdown     ├─────────────────────────────────────────────────────────┤
+│  └ Metric dropdown   │ Row 3: [OS KM] [PFS KM] [Surgery] [Chemo Mix] [RT Mix]  │
+│ Filter by Mutations  │                                                          │
+│  └ Tumour Location   │                                                          │
+│  └ Gene              │                                                          │
+│ Gender filter        │                                                          │
+│ Stage filter         │                                                          │
+└──────────────────────┴──────────────────────────────────────────────────────────┘
+```
+
+### New files
+
+```
+mock-server/
+  routes/
+    cohortAnalytics.ts              GET /fhir/R4/cohort/analytics
+
+src/
+  views/
+    CohortView.tsx                  Top-level cohort page layout
+  components/
+    cohort/
+      ChartPanel.tsx                Reusable panel frame (title, border, skeleton)
+      charts/
+        GenderDistribution.tsx      Recharts donut
+        AgeAtDiagnosis.tsx          Recharts bar
+        CancerStageDistribution.tsx Recharts bar
+        KeySomaticMutations.tsx     SVG OncoPrint waterfall
+        KMChart.tsx                 D3 step-function + CI band (shared)
+        OverallSurvivalKM.tsx       OS KM (uses KMChart)
+        ProgressionFreeSurvivalKM.tsx PFS KM (uses KMChart)
+        SurgeryMix.tsx              Recharts bar
+        ChemotherapyMix.tsx         Recharts bar
+        RadiotherapyMix.tsx         Recharts bar
+  store/
+    cohort.ts                       Zustand cohort store (filters + analytics)
+  lib/
+    cohortApi.ts                    fetchCohortAnalytics()
+  types/
+    cohortAnalytics.ts              CohortAnalyticsResponse interface
+```
 
 ---
 
 ## Notes
 
-- The cohort view is a **separate page** from the Patient 360° view, sharing the same AppShell nav bar.
-- The **mock server already holds all 10 patient bundles in memory** (loaded at startup from `src/data/`). The new `/cohort/analytics` endpoint aggregates over them server-side and returns only computed chart data.
-- Phase 0b optionally adds 20–40 lightweight patients **server-side only** for better distributions (more deceased patients for KM, wider age/stage spread). These never leave the server as raw bundles.
-- The **mutation waterfall** is the most complex panel (D3, stacked bars, search, metric toggle). Plan extra time.
-- **Click-to-filter** triggers a new API call each time. The server re-aggregates with the updated filter set. Keep filter round-trips fast (target < 200ms for 50 patients).
-- KM curves require **D3** (step function + CI band). The simpler charts (bar, donut) use **Recharts**.
-- Shared design tokens (colours, typography, panel frames) should be consistent with the Patient 360° view.
-- Phase ordering: 0 (foundation + server endpoint) → 1 (filters) → 2–4 (charts, parallelisable) → 5 (interactions) → 6–7 (polish).
+- **Phase ordering**: 0 (foundation) → 1 (left panel) → 2, 3, 4 (chart rows) → 0b (population) → 5 (interactions) → 6 (layout/polish) → 7 (non-functional).
+- **KM curves use D3** (step function + CI band). All simpler charts (bar, donut) use Recharts.
+- **Shared design tokens** (colours, panel frame, typography) must be consistent with the Patient 360° view.
+- **Filter round-trips target < 3 seconds** (spec §8.3). Static JSON responses will easily meet this in dev.
+- **Phase 0b** should be done before Phase 5 — 10 patients produce flat/meaningless KM distributions.

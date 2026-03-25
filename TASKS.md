@@ -1,4 +1,4 @@
-# CARPEM CMOT — Development Kanban
+# CARPEM CMOT — Patient 360° Development Kanban
 
 > Update this file as work progresses. Claude reads it at the start of each session.
 > Columns: **Backlog** | **In Progress** | **Done**
@@ -7,85 +7,68 @@
 
 ## Done
 
-- [x] **Side-drawer component** — slides in from right, Escape/backdrop dismiss (`src/components/ui/SideDrawer.tsx`)
-- [x] **Procedure Drawer** — Surgery/RT fields: category badge, code, date/period, T-relative, body site, performer, notes; click RT bar or surgery icon on timeline (`src/components/ui/ProcedureDrawer.tsx`)
-- [x] **Contextual Molecular Panel** — specimen fields, mutation waterfall sparkbars (VAF bars, variant-type colours), actionable findings badge, context-sensitive on biobanking click
-- [x] **Biomarker Sparklines** — WBC / CA 15-3 / CEA Recharts sparklines, shared time domain with timeline (zoom/pan reactive), reference line, red/blue dot colouring
-- [x] **Swim lane: Key Events** — teal DX flag + red progression flags, click popover (code/date/temporal)
-- [x] **Swim lane: Systemic Therapy** — bars grouped by medication, ATC colour coding, numbered dose circles, prophylactic dashed
-- [x] **Swim lane: RT & Surgery** — scalpel icon (surgery) + purple filled rect over duration (RT)
-- [x] **Swim lane: Imaging** — downward cyan triangles + modality label, hover tooltip
-- [x] **Swim lane: Biobanking** — tube/vial/funnel icons, context colour (teal/blue/red), hover tooltip
-- [x] **Hover tooltip** — all markers: label, absolute date, T-relative label, resource type
-- [x] **D3 time axis** — semantic labels (DX/Yr1…Yr6/Mo18/Mo30), minor gridlines, zoom/pan (wheel + drag + +/−), URL state, "Current Date" indicator
-- [x] **Swim lane containers** — 5 labelled rows with clip paths, ready for markers
-- [x] **Patient Identifier Widget** — Patient ID, Age at DX, Gender, Primary Tumor, Stage, Vital Status from FHIR
-- [x] **Clinical Notes Snippets Widget** — 3 most recent notes, temporal labels, truncated excerpts, "View all" modal
-- [x] **Mock FHIR bundle** — 53 resources: Patient, 2 Conditions, 2 Observations (TNM + progression), 2 Procedures, 18 MedicationAdministrations (FEC/Docetaxel/Trastuzumab/Pertuzumab), 1 MedicationRequest (prophylactic), 3 ImagingStudy (CT×2, PET), 2 Specimen, 1 DiagnosticReport, 3 genomic variant Observations, 15 lab Observations (WBC/CA15-3/CEA), 3 DocumentReference
-
+### Foundation
 - [x] Project scaffolding (Vite + React + TypeScript + Tailwind + D3 + Recharts + Zustand)
 - [x] App shell — top nav bar, page title bar, 3-column layout skeleton
 - [x] Panel stubs — LeftPanel, CentrePanel, RightPanel placeholder components
 - [x] Zustand timeline store — zoom & pan shared state (`src/store/timeline.ts`)
 - [x] T0 computation logic (`src/lib/t0.ts`)
 - [x] FHIR R4 type re-exports (`src/types/fhir.ts`)
-- [x] Mock bundle placeholder (`src/data/mockBundle.ts`)
 - [x] CLAUDE.md — full spec encoded as session context
 - [x] Claude Code settings — npm permissions + PostToolUse typecheck hook
+- [x] **React Router v6** — `/cohort` → `CohortView`, `/patient/:id` → `PatientView`, `/` → `/cohort`
+- [x] **AppShell nav toggle** — "COHORT" / "PATIENT 360°" NavLink tabs with active highlight
+
+### Mock data
 - [x] **10 mock patients** — P1–P10 FHIR bundles with full genomic panels (c./p. HGVS), hospitalisations, encounters, lab observations, clinical notes (`src/data/`)
-- [x] **Swim lane: Hospitalisations** — inpatient encounter bars (#FFBB00), truncated label, hover tooltip (`HospitalizationsLane.tsx`)
-- [x] **Death marker** — deep-blue 'D' flag in Key Events lane + full-height vertical line spanning all lanes (`DeathLine.tsx`)
-- [x] **Molecular Panel — mutation table** — Gene (coloured bg) | p. | c. | VAF table replacing bar chart; deduplicated legend; luminance-based text contrast
-- [x] **Mock FHIR R4 server** — standalone Express server on port 3001; endpoints: `/metadata`, `/Patient`, `/Patient/:id`, `/Patient/:id/$everything` with pagination; see `FHIR_TASKS.md` and `mock-server/`
-- [x] **FHIR API client** (`src/lib/fhirApi.ts`) — `fetchPatientList()` + `fetchPatientEverything()` with Bundle.link[next] pagination; `VITE_FHIR_BASE_URL` env var
-- [x] **App wired to FHIR server** — `App.tsx` fetches patients on mount, loads bundles on demand; static bundle imports removed; resolves 1.3 GB memory issue
+- [x] **Mock FHIR R4 server** — standalone Express server on port 3001; `/metadata`, `/Patient`, `/Patient/:id`, `/Patient/:id/$everything`
+- [x] **FHIR API client** (`src/lib/fhirApi.ts`) — `fetchPatientList()` + `fetchPatientEverything()` with Bundle.link[next] pagination
+- [x] **App wired to FHIR server** — `App.tsx` fetches patients on mount, loads bundles on demand; static bundle imports removed
 
----
+### Left Panel
+- [x] **Patient Identifier Widget** — Patient ID, Age at DX, Gender, Primary Tumor, Stage, Vital Status
+- [x] **Clinical Notes Snippets Widget** — 3 most recent notes, temporal labels, truncated excerpts, "View all" modal
 
-## In Progress
+### Centre Panel — Timeline
+- [x] **D3 time axis** — semantic labels (DX/Yr1…Yr6/Mo18/Mo30), minor gridlines, "Current Date" indicator
+- [x] **Zoom & pan** — scroll wheel + +/− buttons, click-drag pan, clamp to T0−3 → T_current+6, URL params `?zoom=N&offset=M`
+- [x] **Swim lane containers** — 6 labelled rows with clip paths
+- [x] **Swim lane: Key Events & Diagnosis** — Condition flags (teal DX, red Progression), click popover
+- [x] **Swim lane: Hospitalisations** — inpatient encounter bars (#FFBB00), hover tooltip
+- [x] **Swim lane: Systemic Therapy** — MedicationAdministration bars, ATC colour coding, dose circles, prophylactic dashed
+- [x] **Swim lane: Radiotherapy & Surgery** — scalpel icon (surgery) / filled rectangle (RT), click → side-drawer
+- [x] **Swim lane: Imaging & Procedures** — downward triangles, modality label, hover tooltip
+- [x] **Swim lane: Biobanking Samples** — tube/vial/funnel icons, context colour, hover tooltip, click → Molecular Panel
+- [x] **Hover tooltip** — all markers: resource type, absolute date, T-relative label, description
+- [x] **Death marker** — deep-blue 'D' flag + full-height vertical line spanning all lanes
+- [x] **Progression lines** — full-height vertical lines at each progression event
+- [x] **CursorLine** — hover cross-hair shared across timeline and biomarker sparklines
 
-*(move cards here when work begins)*
+### Right Panel
+- [x] **Contextual Molecular Panel** — specimen fields, mutation table (Gene | p. | c. | VAF), actionable findings badge, context-sensitive on biobanking click
+- [x] **Biomarker Sparklines** — WBC / CA 15-3 / CEA Recharts sparklines, shared time domain with timeline, reference line, red/blue colouring
 
-
+### Interactions & UX
+- [x] **Side-drawer component** — slides in from right, Escape/backdrop dismiss
+- [x] **Procedure Drawer** — Surgery/RT fields: category badge, code, date, T-relative, body site, performer, notes
+- [x] **"View all notes" modal** — opens from Clinical Notes widget
+- [x] **Keyboard shortcuts** — + / − for zoom on timeline canvas
 
 ---
 
 ## Backlog
 
-### Foundation
-
-### Left Panel (§3)
-- [ ] **Patient Identifier Widget** — Patient ID, Age at DX, Gender, Primary Tumor, Stage at DX (TNM LOINC), Vital Status from mock bundle
-- [ ] **Clinical Notes Snippets Widget** — 3 most recent DocumentReference notes, temporal labels (Day N / Month N / Year Y.M), truncated at ~300 chars, "View all notes" modal
-
-### Centre Panel — Timeline (§4)
-- [ ] **D3 time axis** — horizontal axis in months from T0, labels at DX/Month 1/Year 1/Month 18/Year 2/Month 30/Year 3/Current/Year 4+, "Current Date" vertical indicator
-- [ ] **Zoom & pan** — scroll wheel + +/− buttons, click-drag pan, clamp to T0−3 → T_current+6, URL params `?zoom=N&offset=M`
-- [ ] **Swim lane: Key Events & Diagnosis** — Condition flags (teal DX, red Progression), click → inline tooltip with code + stage + FHIR link
-- [ ] **Swim lane: Systemic Therapy** — MedicationAdministration horizontal bars, ATC drug class colour coding, dose markers as numbered segments, dashed = prophylactic
-- [ ] **Swim lane: Radiotherapy & Surgery** — Procedure scalpel icon (surgery) / filled rectangle over duration (RT), click → side-drawer with full Procedure details
-- [ ] **Swim lane: Imaging & Procedures** — ImagingStudy downward triangles, tooltip modality + series count, click → floating DICOM card overlay
-- [ ] **Swim lane: Biobanking Samples** — Specimen icons (tube/vial/funnel by type), colour by context (baseline=teal, on-treatment=blue, at-progression=red), click → loads Molecular Panel
-- [ ] **Hover tooltip** — all markers: resource type, absolute date, T-relative label, primary label
-
-### Right Panel (§5)
-- [ ] **Contextual Molecular Panel** — context-sensitive on specimen click; fields: sample type, lesion type, date collected, key somatic mutations, actionable findings; default = most recent biopsy
-- [ ] **Mutation Waterfall Sparkbars** — compact horizontal bar chart, bar length = VAF, colour by variant type (missense/frameshift/splice/CNV), max 8 genes + "+ N more" expand
-- [ ] **Biomarker Sparklines** — one 120px-high line chart per biomarker (WBC, CA 15-3, CEA, etc.), shared X-axis zoom/pan with timeline, reference line = upper normal, red > normal / blue = normal
-
-### Interactions & UX (§7)
-- [x] **Side-drawer component** — slides in from right for Procedure details, dismissible
-- [ ] **DICOM thumbnails overlay** — floating card on imaging marker click, dismiss via × *(deferred)*
-- [x] **"View all notes" modal** — opens from Clinical Notes widget
-- [x] **Keyboard shortcuts** — + / − for zoom on timeline canvas
-
-### Integration
-- [ ] **Patient selector / URL routing** — `/patient/:id` route so deep-linking to a patient works across page reloads
+### Non-functional requirements (spec §8, §10)
+- [ ] **DICOM thumbnails overlay** — floating card on imaging marker click *(deferred)*
+- [ ] **Accessibility — WCAG 2.1 AA** — keyboard navigation, ARIA labels, colour not sole encoding
+- [ ] **Read-only enforcement** — audit: no write operations to FHIR resources anywhere
+- [ ] **No PHI in URL** — audit all `navigate()` calls in patient view
 
 ---
 
 ## Notes
 
-- Centre panel D3 timeline is the critical path — build it before Right panel sparklines (shared zoom state dependency).
-- Mock bundle must be filled before any widget can be meaningfully developed.
+- Centre panel D3 timeline is the critical path — build before right panel sparklines (shared zoom state).
 - Biomarker sparklines share the same T0-relative X axis as the D3 timeline — implement after zoom/pan is stable.
+- For the Cohort Analytics Dashboard Kanban see `COHORT_TASKS.md`.
+- For the mock FHIR server Kanban see `FHIR_TASKS.md`.

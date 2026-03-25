@@ -1,6 +1,11 @@
-# CARPEM CMOT — Single Patient 360° Profile
+# CARPEM CMOT — Clinical Dashboard
 
-FHIR R4 read-only clinical dashboard for oncologists and data managers at CARPEM (Cancer Research for Personalized Medicine). Displays a single patient's full longitudinal oncology trajectory in a three-panel layout.
+FHIR R4 read-only clinical dashboard for oncologists and data managers at CARPEM (Cancer Research for Personalized Medicine). Two complementary views share the same application:
+
+| View | Route | Purpose |
+|------|-------|---------|
+| **Cohort Analytics** | `/cohort` | Aggregate statistics and OncoPrint for the full trial or a tumour-site sub-cohort |
+| **Patient 360°** | `/patient/:id` | Full longitudinal oncology trajectory for a single patient |
 
 ---
 
@@ -19,7 +24,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. The app fetches the patient list from the FHIR server on startup and loads each patient's bundle on demand.
+Open http://localhost:5173. The app defaults to the Cohort view. Switch to a patient via the top nav.
 
 ```bash
 npm run typecheck   # TypeScript check — run after every non-trivial change
@@ -42,11 +47,73 @@ cp .env.example .env
 
 ---
 
-## Architecture overview
+## Cohort Analytics Dashboard
+
+Three-row grid layout displaying aggregate statistics across the cohort.
+
+### Layout
+
+```
+┌─ Left Panel (~20%) ──┬─ Main Grid (~80%) ──────────────────────────────────────┐
+│ Reset Filters        │ Row 1: [Gender Distribution] [Age at DX] [Stage]         │
+│ Cohort Summary N=X   ├─────────────────────────────────────────────────────────┤
+│ Filter by Mutations  │ Row 2: [Key Somatic Mutations — OncoPrint, full width   ]│
+│  └ Tumour Location   ├─────────────────────────────────────────────────────────┤
+│  └ Gene              │ Row 3: [OS] [PFS] [Surgery Mix] [Chemo Mix] [RT Mix]    │
+│ Gender filter        │                                                          │
+│ Stage filter         └─────────────────────────────────────────────────────────┘
+└──────────────────────┘
+```
+
+### Charts
+
+| Panel | Type | Data source |
+|-------|------|-------------|
+| Gender Distribution | Donut (Recharts) | `analytics.gender` |
+| Age at Diagnosis | Bar chart (Recharts) | `analytics.ageBins` |
+| Cancer Stage Distribution | Bar chart (Recharts) | `analytics.stages` |
+| Key Somatic Mutations | OncoPrint (SVG) | `analytics.oncoPrint` |
+| Overall Survival | Step curve (D3) | `analytics.osCurve` |
+| Progression-Free Survival | Step curve (D3) | `analytics.pfsCurve` |
+| Surgery Mix | Bar chart (Recharts) | `analytics.surgeryMix` |
+| Chemotherapy Mix | Bar chart (Recharts) | `analytics.chemoMix` |
+| Radiotherapy Mix | Bar chart (Recharts) | `analytics.rtMix` |
+
+### OncoPrint
+
+The Key Somatic Mutations panel renders a gene × patient matrix:
+
+- **Rows** — top 10 genes by alteration frequency; genes of interest (per tumour site) pinned to the top with an amber dot marker
+- **Columns** — one column per patient, sorted lexicographically by mutation status (most-frequent gene first, mutated before unaltered, recursively)
+- **Cells** — coloured by variant type; multi-alteration cells split vertically; unaltered = light grey
+- **Summary bar** — per-patient alteration burden shown above the matrix
+- **Interactions** — hover for gene/patient tooltip; click gene row to filter cohort by gene
+
+### Filters
+
+All filters apply as logical AND and trigger an immediate server re-query. Filter state is persisted in the URL (`?gender=&stage=&bodySite=&gene=`).
+
+| Filter | Values |
+|--------|--------|
+| Cohort Type (top bar) | Full Trial / Breast / Ovarian / Colorectal / Lung |
+| Tumour Location | Free-text body site |
+| Gene | Free-text gene symbol |
+| Gender | Female / Male / Other |
+| Stage | I / II / III / IV |
+
+### Per-site clinical configuration (`src/config/cohortConfig.ts`)
+
+Defines genes of interest, surgery categories, and chemotherapy classes for each tumour site. Surgery labels are normalised server-side via `normalizeSurgeryLabel()` using an alias map.
+
+---
+
+## Patient 360° View
+
+### Architecture overview
 
 ```
 App.tsx
-└── AppShell             header + patient dropdown
+└── AppShell             top nav — Cohort / Patient 360° tabs + patient dropdown
     ├── LeftPanel (~18%)
     │   ├── PatientIdentifier
     │   └── ClinicalNotes
@@ -75,78 +142,18 @@ App.tsx
 | `usePatientStore` | `src/store/patient.ts` | All FHIR resources + computed T0 |
 | `useTimelineStore` | `src/store/timeline.ts` | zoom, offset, centralPlotWidth, hoverMonths |
 | `useSelectionStore` | `src/store/selection.ts` | selectedSpecimenId, selectedProcedureId |
+| `useCohortStore` | `src/store/cohort.ts` | filters, analytics response, loading state |
 
-`useTimelineStore` is shared between `TimelineCanvas` and `BiomarkerSparklines` so that sparklines always mirror the timeline's time window.
+`useTimelineStore` is shared between `TimelineCanvas` and `BiomarkerSparklines` so sparklines always mirror the timeline's time window.
 
----
-
-## Mock FHIR server (`mock-server/`)
-
-Standalone Express server implementing a minimal subset of the FHIR R4 HTTP API. It is the development replacement for the real CARPEM EDS.
-
-| Method | Endpoint | Returns |
-|--------|----------|---------|
-| `GET` | `/fhir/R4/metadata` | `CapabilityStatement` |
-| `GET` | `/fhir/R4/Patient` | `Bundle` (searchset) — 10 patients |
-| `GET` | `/fhir/R4/Patient/:id` | `Patient` resource or 404 `OperationOutcome` |
-| `GET` | `/fhir/R4/Patient/:id/$everything` | `Bundle` (collection, paginated via `?_count=N&_page=N`) |
-
-Data is served directly from the TypeScript mock bundles in `src/data/` — no duplication. See `FHIR_TASKS.md` for the server's development Kanban.
-
----
-
-## Tech stack
-
-| Concern | Library |
-|---------|---------|
-| Framework | React 19 + TypeScript 5 |
-| Build | Vite 6 |
-| Styling | Tailwind CSS v3 |
-| Timeline | D3 v7 (SVG, zoom/pan) |
-| Sparklines | Recharts |
-| State | Zustand v5 |
-| FHIR types | `@types/fhir` (`fhir4.*` namespace) |
-| HTTP | native `fetch` (`src/lib/fhirApi.ts`) |
-
----
-
-## FHIR data model
-
-The app consumes a single FHIR R4 `Bundle` returned by `GET /fhir/R4/Patient/{id}/$everything`.
-
-### Resource types used
-
-| Resource | Purpose |
-|----------|---------|
-| `Patient` | Demographics, vital status |
-| `Condition` | Diagnoses, progression events; T0-anchor extension |
-| `Encounter` | Inpatient hospitalisations (class `IMP`) |
-| `MedicationAdministration` | Systemic therapy doses |
-| `MedicationRequest` | Prophylactic intent flag |
-| `Procedure` | Surgery (SNOMED 387713003), Radiotherapy (108290001) |
-| `ImagingStudy` | Imaging events with modality |
-| `DiagnosticReport` | Molecular panel linked to specimens |
-| `Observation` | Biomarkers, staging (TNM), progression (LOINC 21976-6), somatic variants (LOINC 69548-6) |
-| `Specimen` | Biobanked samples; collection-context extension |
-| `DocumentReference` | Clinical notes (base64 text attachments) |
-
-### CARPEM-specific FHIR extensions
-
-| Extension URL | Resource | Meaning |
-|---------------|----------|---------|
-| `http://carpem.fr/fhir/StructureDefinition/t0-anchor` | `Condition` | `valueBoolean: true` — this condition defines T0 |
-| `http://carpem.fr/fhir/StructureDefinition/collection-context` | `Specimen` | `valueCode`: `baseline` \| `on-treatment` \| `at-progression` |
-
----
-
-## T0 — date of diagnosis
+### T0 — date of diagnosis
 
 Defined in `src/lib/t0.ts`.
 
 1. **Override**: any `Condition` with the `t0-anchor` extension (`valueBoolean: true`) → its `onsetDateTime` is T0.
 2. **Default**: earliest `onsetDateTime` among `Condition` resources where `clinicalStatus = active`, `verificationStatus = confirmed`, `category = encounter-diagnosis`.
 
-All timeline positions are expressed as **months from T0**: `(event.date − T0) / 30.44`.
+All timeline positions: `(event.date − T0) / 30.44` months.
 
 Temporal label format (`src/lib/formatters.ts`):
 
@@ -156,88 +163,66 @@ Temporal label format (`src/lib/formatters.ts`):
 | < 12 months | `[Month N]` |
 | ≥ 12 months | `[Year Y.M]` |
 
----
+### Timeline swim lanes
 
-## Timeline swim lanes
+| Lane | Content | Visual |
+|------|---------|--------|
+| Key Events & Diagnosis | Conditions, death marker | DX (teal), Progression (red), Death (dark blue) |
+| Hospitalisations | Encounters (class `IMP`) | Yellow bars (`#FFBB00`) |
+| Systemic Therapy | MedicationAdministration | Horizontal bars + dose circles, ATC colour-coded |
+| Radiotherapy & Surgery | Procedure | Surgery: scalpel icon; RT: filled rectangle |
+| Imaging & Procedures | ImagingStudy | Downward triangle + modality label |
+| Biobanking Samples | Specimen | Icon by type (tube/vial/funnel), colour by context |
 
-| Lane | ID | Content | Visual |
-|------|----|---------|--------|
-| Key Events & Diagnosis | `key-events` | Conditions, death marker | Coloured squares: DX (teal), Progression (red), Death (dark blue) |
-| Hospitalisations | `hospitalizations` | Encounters (class `IMP`) | Yellow bars (`#FFBB00`) with truncated label |
-| Systemic Therapy | `systemic` | MedicationAdministration | Horizontal bars + numbered dose circles |
-| Radiotherapy & Surgery | `rt-surgery` | Procedure | Surgery: scalpel icon; RT: filled rectangle over duration |
-| Imaging & Procedures | `imaging` | ImagingStudy | Downward triangle with modality label |
-| Biobanking Samples | `biobanking` | Specimen | Icon by type: tube / biopsy / funnel |
-
-Full-height decorative lines (`ProgressionLines.tsx`, `DeathLine.tsx`) are rendered **outside** the per-lane `<clipPath>` so they span the entire timeline height.
-
-### Drug classification (ATC) — SystemicTherapyLane
+### Drug classification (ATC)
 
 | ATC prefix | Class | Colour |
 |-----------|-------|--------|
 | `L01F` | Immunotherapy | `#7B4FBC` |
-| `L01X` | Targeted / mAb | `#2E7D4F` |
+| `L01XC` / `L01FA` | Targeted / mAb | `#2E7D4F` |
 | `L02` | Hormone therapy | `#D97706` |
 | `L01` (other) | Chemotherapy | `#4A7FB5` |
 
----
-
-## Molecular Panel
-
-Displays somatic variants for the selected specimen (default: most recent biopsy). Variants are shown in a table — Gene (coloured by variant type) | p. | c. | VAF — sorted by descending VAF, max 8 rows.
-
-### Variant LOINC components
-
-| LOINC | Component |
-|-------|-----------|
-| 48018-6 | Gene studied |
-| 81258-6 | Allelic frequency (VAF) |
-| 48006-1 | Molecular consequence (variant type) |
-| 48004-6 | DNA change (c.HGVS) |
-| 48005-3 | Amino acid change (p.HGVS) |
-
----
-
-## Biomarker Sparklines
-
-One Recharts line chart per biomarker for all `Observation` resources in category `laboratory`. The X-axis domain mirrors the timeline's zoom/pan state in real time.
-
-| LOINC | Label | Unit |
-|-------|-------|------|
-| 6690-2 | WBC | 10⁹/L |
-| 718-7 | Hb | g/dL |
-| 10334-1 | CA 15-3 | U/mL |
-| 24108-3 | CA 19-9 | U/mL |
-| 2857-1 | CEA | ng/mL |
-| 19197-8 | PSA | ng/mL |
-| 14804-9 | LDH | U/L |
-| 12994-6 | S100B | µg/L |
-| 83050-6 | CA-125 | U/mL |
-| 6768-6 | Alk Phos | U/L |
-| 1975-2 | Bilirubin | mg/dL |
-
-Reference ranges are read from `Observation.referenceRange[0].high`. Values above the upper limit are highlighted red.
-
----
-
-## Timeline interactions
+### Timeline interactions
 
 | Interaction | Result |
 |-------------|--------|
-| Hover any marker | Tooltip (resource type, absolute date, T-relative label, description) |
+| Hover any marker | Tooltip (type, date, T-relative label, description) |
 | Scroll wheel | Zoom in/out around cursor |
 | Click-drag | Pan left/right |
-| `+` / `=` / `-` keys | Zoom in/out around centre |
-| Click surgery/RT marker | Side drawer with full `Procedure` details |
+| `+` / `−` keys | Zoom in/out around centre |
+| Click surgery/RT marker | Side drawer with full Procedure details |
 | Click biobanking marker | Updates Molecular Panel to that specimen |
-
-Zoom/pan state is synced to URL parameters (`?zoom=N&offset=M`) for bookmarking.
 
 ---
 
-## Mock patients
+## Mock FHIR server (`mock-server/`)
 
-10 fictional patients are served by the mock FHIR server. Each has a full genomic panel (c./p. HGVS), hospitalisations, lab observations, and clinical notes. The switcher in the top nav shows each patient's research ID (`CARPEM-YYYY-NNNNN`).
+Standalone Express server implementing a minimal subset of the FHIR R4 HTTP API.
+
+| Method | Endpoint | Returns |
+|--------|----------|---------|
+| `GET` | `/fhir/R4/metadata` | `CapabilityStatement` |
+| `GET` | `/fhir/R4/Patient` | `Bundle` (searchset) — 10 named patients |
+| `GET` | `/fhir/R4/Patient/:id` | `Patient` resource or 404 `OperationOutcome` |
+| `GET` | `/fhir/R4/Patient/:id/$everything` | `Bundle` (collection, paginated via `?_count=N&_page=N`) |
+| `GET` | `/fhir/R4/cohort/analytics` | Pre-aggregated chart data (`?phase=demographics\|full&gender=&stage=&bodySite=&gene=`) |
+
+### Analytics endpoint
+
+All aggregation is server-side. The client receives only pre-computed chart-ready data — never raw bundles.
+
+- **`?phase=demographics`** — returns `n`, `gender`, `ageBins`, `stages` (Row 1 data, fast)
+- **`?phase=full`** — returns all of the above plus `oncoPrint`, `surgeryMix`, `chemoMix`, `rtMix`, `osCurve`, `pfsCurve`
+
+Survival curves are computed using the product-limit (Kaplan-Meier) estimator with Greenwood's 95% CI formula.
+
+### Mock patient population
+
+100 patients total:
+
+- **10 named patients** (`src/data/`) — full FHIR bundles with genomic panels (c./p. HGVS), hospitalisations, lab observations, clinical notes
+- **90 synthetic patients** (`mock-server/data/syntheticPatients.ts`) — lightweight bundles for realistic cohort distributions; server-side only, never sent to the client
 
 | # | Research ID | Tumour |
 |---|-------------|--------|
@@ -252,6 +237,64 @@ Zoom/pan state is synced to URL parameters (`?zoom=N&offset=M`) for bookmarking.
 | 9 | CARPEM-2023-02567 | TNBC BRCA1 (BRCA1, TP53, RB1) |
 | 10 | CARPEM-2024-02890 | Pancreatic PDAC (KRAS, TP53, CDKN2A, SMAD4) |
 
+Synthetic cohort (sp01–sp90): ~48F/42M; Stage I×19, II×28, III×29, IV×19; body sites Breast/Colon/Lung/Ovary; ~50 patients carry genomic variants for OncoPrint.
+
+---
+
+## Tech stack
+
+| Concern | Library |
+|---------|---------|
+| Framework | React 19 + TypeScript 5 |
+| Build | Vite 6 |
+| Routing | React Router v6 |
+| Styling | Tailwind CSS v3 |
+| Timeline | D3 v7 (SVG, zoom/pan, KM curves) |
+| Charts | Recharts (bar, donut, OncoPrint legend) |
+| State | Zustand v5 |
+| FHIR types | `@types/fhir` (`fhir4.*` namespace) |
+| HTTP | native `fetch` |
+
+---
+
+## FHIR data model
+
+### Resource types used
+
+| Resource | Purpose |
+|----------|---------|
+| `Patient` | Demographics, vital status |
+| `Condition` | Diagnoses, progression events; T0-anchor extension |
+| `Encounter` | Inpatient hospitalisations (class `IMP`) |
+| `MedicationAdministration` | Systemic therapy doses |
+| `MedicationRequest` | Prophylactic intent flag |
+| `Procedure` | Surgery (SNOMED 387713003), Radiotherapy (108290001) |
+| `ImagingStudy` | Imaging events with modality |
+| `DiagnosticReport` | Molecular panel linked to specimens |
+| `Observation` | Biomarkers, staging (TNM LOINC 21908-9), progression (21976-6), somatic variants (69548-6) |
+| `Specimen` | Biobanked samples; collection-context extension |
+| `DocumentReference` | Clinical notes (base64 text attachments) |
+
+### CARPEM-specific FHIR extensions
+
+| Extension URL | Resource | Meaning |
+|---------------|----------|---------|
+| `http://carpem.fr/fhir/StructureDefinition/t0-anchor` | `Condition` | `valueBoolean: true` — this condition defines T0 |
+| `http://carpem.fr/fhir/StructureDefinition/collection-context` | `Specimen` | `valueCode`: `baseline` \| `on-treatment` \| `at-progression` |
+
+### Somatic variant LOINC components
+
+| LOINC | Component |
+|-------|-----------|
+| 48018-6 | Gene studied |
+| 48019-4 | DNA change type (variant type code) |
+| 81258-6 | Allelic frequency (VAF) |
+| 48006-1 | Molecular consequence |
+| 48004-6 | DNA change (c.HGVS) |
+| 48005-3 | Amino acid change (p.HGVS) |
+
+Variant detection in the cohort analytics uses dual matching: `genomic-variant` category **or** LOINC code `69548-6`, to accommodate P1/P2 bundles that use the `laboratory` category.
+
 ---
 
 ## File structure
@@ -262,23 +305,34 @@ mock-server/
   routes/
     metadata.ts                GET /fhir/R4/metadata
     patients.ts                GET /Patient, /Patient/:id, /Patient/:id/$everything
+    cohortAnalytics.ts         GET /cohort/analytics — server-side aggregation
+  data/
+    syntheticPatients.ts       90 lightweight patient bundles (cohort only)
   package.json
   tsconfig.json
 
 src/
-  App.tsx                      Root: patient dropdown, FHIR fetch, error banner
   main.tsx
+  App.tsx                      Root router (BrowserRouter)
+  views/
+    CohortView.tsx             Cohort Analytics Dashboard page
+    PatientView.tsx            Patient 360° page
+  config/
+    cohortConfig.ts            Per-site genes, surgery types, chemo classes; normalizeSurgeryLabel()
   types/
     fhir.ts                    Re-exports of fhir4.* types + MonthsFromT0
+    cohortAnalytics.ts         CohortAnalyticsResponse, OncoPrintData, CohortFilters
   lib/
     t0.ts                      computeT0(), toMonthsFromT0()
     formatters.ts              formatDate(), formatTemporalLabel(), …
     bundleUtils.ts             getResources<K>(), getPatient()
     fhirApi.ts                 fetchPatientList(), fetchPatientEverything()
+    cohortApi.ts               fetchCohortAnalytics(filters, phase)
   store/
     patient.ts                 usePatientStore
-    timeline.ts                useTimelineStore
+    timeline.ts                useTimelineStore (zoom/pan, shared with sparklines)
     selection.ts               useSelectionStore
+    cohort.ts                  useCohortStore (filters, analytics, fetch actions)
   data/
     mockBundle.ts              Patient 1
     mockBundle2.ts             Patient 2
@@ -290,6 +344,21 @@ src/
       LeftPanel.tsx
       CentrePanel.tsx
       RightPanel.tsx
+    cohort/
+      ChartPanel.tsx           Reusable panel frame (title, loading, error)
+      CohortLeftPanel.tsx      Filter sidebar (reset, N counter, gender, stage, gene, site)
+      charts/
+        GenderDistribution.tsx
+        AgeAtDiagnosis.tsx
+        CancerStageDistribution.tsx
+        KeySomaticMutations.tsx  OncoPrint SVG matrix + MutationSearch export
+        KMChart.tsx              Shared D3 Kaplan-Meier component
+        OverallSurvivalKM.tsx
+        ProgressionFreeSurvivalKM.tsx
+        SurgeryMix.tsx
+        ChemotherapyMix.tsx
+        RadiotherapyMix.tsx
+        TreatmentBarChart.tsx    Shared Recharts bar chart for mix panels
     timeline/
       constants.ts
       TimelineCanvas.tsx
@@ -324,7 +393,8 @@ src/
 
 - **Read-only**: no data entry or annotation.
 - **Single patient session**: switching patients resets all selections and zoom.
-- **DICOM thumbnails**: imaging marker click-card is not yet implemented (planned).
-- **URL routing**: no `/patient/:id` deep-link support yet; the dropdown always resets to patient 1 on page reload.
+- **DICOM thumbnails**: imaging marker click-card not yet implemented.
+- **Two-phase loading**: cohort analytics fetches everything in one round-trip; progressive `phase=demographics` rendering is planned.
 - **Real API**: replace `VITE_FHIR_BASE_URL` with the production CARPEM EDS endpoint to connect to live data.
-- **Localisation**: dates are formatted in `fr-FR` locale; UI labels are in English.
+- **Localisation**: dates formatted in `fr-FR` locale; UI labels in English.
+- **Accessibility**: WCAG 2.1 AA compliance not yet audited.

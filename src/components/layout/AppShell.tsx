@@ -1,16 +1,16 @@
-import { ReactNode } from 'react'
+import { type ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
 
 interface Props {
   children: ReactNode
-  patientId?: string
-  patientSwitcher?: ReactNode
 }
 
-export default function AppShell({ children, patientId, patientSwitcher }: Props) {
+export default function AppShell({ children }: Props) {
   return (
     <div className="flex flex-col h-full text-gray-900">
       {/* Top navigation bar — deep blue */}
       <header className="flex items-center justify-between px-5 h-12 bg-[#1B2A4A] shrink-0">
+        {/* Left: branding */}
         <div className="flex flex-col leading-tight">
           <span className="text-[13px] text-blue-200 font-medium tracking-wide">
             Medical and Translational Research Data Warehouse
@@ -19,8 +19,38 @@ export default function AppShell({ children, patientId, patientSwitcher }: Props
             CARPEM Master Observational Trial
           </span>
         </div>
-        <div className="flex items-center gap-4 text-blue-200 text-base">
-          {patientSwitcher}
+
+        {/* Centre: view nav tabs */}
+        <nav className="flex items-center gap-1">
+          <NavLink
+            to="/cohort"
+            className={({ isActive }) =>
+              `text-[12px] font-semibold uppercase tracking-widest px-4 py-1 rounded transition-colors ${
+                isActive
+                  ? 'bg-white/15 text-white'
+                  : 'text-blue-300 hover:text-white hover:bg-white/10'
+              }`
+            }
+          >
+            Cohort
+          </NavLink>
+          <NavLink
+            to="/patient"
+            end={false}
+            className={({ isActive }) =>
+              `text-[12px] font-semibold uppercase tracking-widest px-4 py-1 rounded transition-colors ${
+                isActive
+                  ? 'bg-white/15 text-white'
+                  : 'text-blue-300 hover:text-white hover:bg-white/10'
+              }`
+            }
+          >
+            Patient 360°
+          </NavLink>
+        </nav>
+
+        {/* Right: utility icons */}
+        <div className="flex items-center gap-4 text-blue-200">
           <button className="hover:text-white transition-colors">
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -33,16 +63,8 @@ export default function AppShell({ children, patientId, patientSwitcher }: Props
         </div>
       </header>
 
-      {/* Page title — same colour as background */}
-      <div className="px-5 py-2 bg-[#dce8f0] shrink-0 border-b border-[#b8d0e0]">
-        <h1 className="text-xl font-black tracking-widest text-[#1B2A4A] uppercase">
-          Single Patient 360-Degree Profile:{' '}
-          <span className="font-black">{patientId ?? '—'}</span>
-        </h1>
-      </div>
-
-      {/* Three-column layout — light blue background */}
-      <div className="flex flex-1 min-h-0 bg-[#dce8f0]">
+      {/* View content — fills the rest of the viewport */}
+      <div className="flex flex-col flex-1 min-h-0">
         {children}
       </div>
     </div>

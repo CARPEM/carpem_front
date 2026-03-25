@@ -1,89 +1,44 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import AppShell from '@/components/layout/AppShell'
-import LeftPanel from '@/components/panels/LeftPanel'
-import CentrePanel from '@/components/panels/CentrePanel'
-import RightPanel from '@/components/panels/RightPanel'
-import ProcedureDrawer from '@/components/ui/ProcedureDrawer'
-import { usePatientStore } from '@/store/patient'
-import { fetchPatientList, fetchPatientEverything } from '@/lib/fhirApi'
-import type { FhirPatient } from '@/types/fhir'
+import CohortView from '@/views/CohortView'
+import PatientView from '@/views/PatientView'
+import { fetchPatientList } from '@/lib/fhirApi'
 
-function patientLabel(p: FhirPatient): string {
+/** Fetches the patient list and redirects to the first patient's URL. */
+function PatientRedirect() {
+  const navigate = useNavigate()
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchPatientList()
+      .then((list) => {
+        if (list[0]?.id) navigate(`/patient/${list[0].id}`, { replace: true })
+        else setError('No patients found')
+      })
+      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
+  }, [navigate])
+
+  if (error) return (
+    <div className="flex items-center justify-center flex-1 text-red-600 text-sm">{error}</div>
+  )
   return (
-    p.identifier?.find((i) => i.use === 'official')?.value ??
-    p.id ??
-    '?'
+    <div className="flex items-center justify-center flex-1 text-gray-400 text-sm">
+      Loading patients…
+    </div>
   )
 }
 
 export default function App() {
-  const { loadBundle, patient } = usePatientStore()
-
-  const [patients, setPatients]       = useState<FhirPatient[]>([])
-  const [selectedId, setSelectedId]   = useState<string | null>(null)
-  const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState<string | null>(null)
-
-  // On mount — fetch the patient list and auto-select the first one
-  useEffect(() => {
-    fetchPatientList()
-      .then((list) => {
-        setPatients(list)
-        if (list[0]?.id) setSelectedId(list[0].id)
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-  }, [])
-
-  // Whenever the selected patient changes — fetch their full bundle
-  const loadPatient = useCallback(
-    (id: string) => {
-      setLoading(true)
-      setError(null)
-      fetchPatientEverything(id)
-        .then((bundle) => loadBundle(bundle))
-        .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-        .finally(() => setLoading(false))
-    },
-    [loadBundle],
-  )
-
-  useEffect(() => {
-    if (selectedId) loadPatient(selectedId)
-  }, [selectedId, loadPatient])
-
-  const patientId =
-    patient?.identifier?.find((i) => i.use === 'official')?.value ??
-    patient?.id ??
-    '—'
-
-  const switcher = (
-    <select
-      value={selectedId ?? ''}
-      disabled={loading || patients.length === 0}
-      onChange={(e) => setSelectedId(e.target.value)}
-      className="bg-[#1B2A4A] border border-blue-300/50 text-blue-100 text-xs font-semibold rounded px-2 py-0.5 disabled:opacity-50 cursor-pointer hover:border-blue-300 focus:outline-none"
-    >
-      {patients.map((p) => (
-        <option key={p.id} value={p.id ?? ''}>
-          {patientLabel(p)}
-        </option>
-      ))}
-    </select>
-  )
-
   return (
-    <>
-      <AppShell patientId={patientId} patientSwitcher={switcher}>
-        {error && (
-          <div className="col-span-3 flex items-center justify-center bg-red-50 text-red-700 text-sm px-4 py-2 border-b border-red-200">
-            FHIR server error: {error}
-          </div>
-        )}
-        <LeftPanel />
-        <CentrePanel />
-        <RightPanel />
-      </AppShell>
-      <ProcedureDrawer />
-    </>
+    <AppShell>
+      <Routes>
+        <Route path="/"            element={<Navigate to="/cohort" replace />} />
+        <Route path="/cohort"      element={<CohortView />} />
+        <Route path="/patient"     element={<PatientRedirect />} />
+        <Route path="/patient/:id" element={<PatientView />} />
+      </Routes>
+    </AppShell>
   )
 }
