@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   ResponsiveContainer,
   LineChart,
@@ -47,9 +48,59 @@ function SparkDot(props: unknown) {
   )
 }
 
+interface BiomarkerDataItem {
+  loincCode: string
+  label: string
+  unit: string
+  points: SparkPoint[]
+  refHigh: number | null
+  yMin: number
+  yMax: number
+}
+
 export default function BiomarkerSparklines() {
   const { observations, t0 } = usePatientStore()
   const { zoom, offset, centralPlotWidth, hoverMonths, setHoverMonths } = useTimelineStore()
+
+  // Expensive filtering/sorting/mapping — only recompute when patient data changes,
+  // not on every zoom/pan/hover event
+  const biomarkerData = useMemo<BiomarkerDataItem[]>(() => {
+    if (!t0) return []
+    const result: BiomarkerDataItem[] = []
+    for (const { loincCode, label, unit } of BIOMARKER_CONFIG) {
+      const bioObs = observations
+        .filter(
+          (o) =>
+            o.category?.some((cat) => cat.coding?.some((c) => c.code === 'laboratory')) &&
+            o.code?.coding?.some((c) => c.code === loincCode) &&
+            o.effectiveDateTime != null &&
+            o.valueQuantity?.value != null,
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.effectiveDateTime!).getTime() - new Date(b.effectiveDateTime!).getTime(),
+        )
+      if (bioObs.length === 0) continue
+      const refHigh =
+        bioObs.find((o) => o.referenceRange?.[0]?.high?.value != null)
+          ?.referenceRange?.[0]?.high?.value ?? null
+      const points: SparkPoint[] = bioObs.map((o) => {
+        const value = o.valueQuantity!.value!
+        return {
+          months: toMonthsFromT0(new Date(o.effectiveDateTime!), t0),
+          value,
+          isHigh: refHigh != null ? value > refHigh : false,
+        }
+      })
+      const allValues = points.map((p) => p.value)
+      result.push({
+        loincCode, label, unit, points, refHigh,
+        yMin: Math.min(...allValues) * 0.8,
+        yMax: Math.max(...allValues, refHigh ?? 0) * 1.2,
+      })
+    }
+    return result
+  }, [observations, t0])
 
   if (!t0) return null
 
@@ -67,45 +118,7 @@ export default function BiomarkerSparklines() {
       </div>
       <div className="p-3 flex flex-col gap-1">
 
-      {BIOMARKER_CONFIG.map(({ loincCode, label, unit }) => {
-        // Filter observations for this biomarker
-        const bioObs = observations
-          .filter(
-            (o) =>
-              o.category?.some((cat) =>
-                cat.coding?.some((c) => c.code === 'laboratory'),
-              ) &&
-              o.code?.coding?.some((c) => c.code === loincCode) &&
-              o.effectiveDateTime != null &&
-              o.valueQuantity?.value != null,
-          )
-          .sort(
-            (a, b) =>
-              new Date(a.effectiveDateTime!).getTime() -
-              new Date(b.effectiveDateTime!).getTime(),
-          )
-
-        if (bioObs.length === 0) return null
-
-        // Reference range high from any observation that has it
-        const refHigh =
-          bioObs.find((o) => o.referenceRange?.[0]?.high?.value != null)
-            ?.referenceRange?.[0]?.high?.value ?? null
-
-        // Build data points
-        const points: SparkPoint[] = bioObs.map((o) => {
-          const value = o.valueQuantity!.value!
-          return {
-            months: toMonthsFromT0(new Date(o.effectiveDateTime!), t0),
-            value,
-            isHigh: refHigh != null ? value > refHigh : false,
-          }
-        })
-
-        const allValues = points.map((p) => p.value)
-        const yMin = Math.min(...allValues) * 0.8
-        const yMax = Math.max(...allValues, refHigh ?? 0) * 1.2
-
+      {biomarkerData.map(({ loincCode, label, unit, points, refHigh, yMin, yMax }) => {
         return (
           <div
             key={loincCode}

@@ -8,12 +8,18 @@ async function fetchJson<T>(url: string): Promise<T> {
   return res.json() as Promise<T>
 }
 
+// Module-level cache — patient list is static for the session; avoids a network
+// round-trip every time the user navigates to PatientView.
+let _patientListCache: FhirPatient[] | null = null
+
 /** Fetch all Patient resources from GET /Patient (searchset Bundle). */
 export async function fetchPatientList(): Promise<FhirPatient[]> {
+  if (_patientListCache) return _patientListCache
   const bundle = await fetchJson<FhirBundle>(`${BASE_URL}/Patient`)
-  return (bundle.entry ?? [])
+  _patientListCache = (bundle.entry ?? [])
     .map((e) => e.resource)
     .filter((r): r is FhirPatient => r?.resourceType === 'Patient')
+  return _patientListCache
 }
 
 /**

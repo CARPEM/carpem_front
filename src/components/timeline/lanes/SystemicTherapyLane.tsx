@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { usePatientStore } from '@/store/patient'
 import { useTimelineStore } from '@/store/timeline'
 import { toMonthsFromT0 } from '@/lib/t0'
@@ -39,36 +40,35 @@ export default function SystemicTherapyLane({ laneY, laneHeight, plotWidth, onHo
   const { medicationAdministrations, medicationRequests, t0 } = usePatientStore()
   const { zoom, offset } = useTimelineStore()
 
+  // Rebuild tracks only when patient data changes, not on every zoom/pan
+  const tracks = useMemo<Track[]>(() => {
+    if (!t0) return []
+    const trackMap = new Map<string, Track>()
+    for (const ma of medicationAdministrations) {
+      const coding = ma.medicationCodeableConcept?.coding ?? []
+      const text = ma.medicationCodeableConcept?.text ?? coding[0]?.display ?? 'Unknown'
+      const dateStr = ma.effectiveDateTime ?? (ma.effectivePeriod as fhir4.Period | undefined)?.start
+      if (!dateStr) continue
+      const date = new Date(dateStr)
+      if (!trackMap.has(text)) {
+        trackMap.set(text, { text, color: drugColor(coding), isProphylactic: false, doses: [] })
+      }
+      const track = trackMap.get(text)!
+      track.doses.push({ months: toMonthsFromT0(date, t0), date, index: track.doses.length + 1 })
+    }
+    for (const mr of medicationRequests) {
+      if (mr.intent !== 'prophylactic') continue
+      const text = (mr.medicationCodeableConcept as fhir4.CodeableConcept | undefined)?.text
+      if (text && trackMap.has(text)) {
+        trackMap.get(text)!.isProphylactic = true
+      }
+    }
+    return [...trackMap.values()]
+  }, [medicationAdministrations, medicationRequests, t0])
+
   if (!t0) return null
 
   const toX = (months: number) => LABEL_WIDTH + (months - offset) * zoom
-
-  // ── Group administrations by medication text ───────────────────────────────
-  const trackMap = new Map<string, Track>()
-
-  for (const ma of medicationAdministrations) {
-    const coding = ma.medicationCodeableConcept?.coding ?? []
-    const text = ma.medicationCodeableConcept?.text ?? coding[0]?.display ?? 'Unknown'
-    const dateStr = ma.effectiveDateTime ?? (ma.effectivePeriod as fhir4.Period | undefined)?.start
-    if (!dateStr) continue
-    const date = new Date(dateStr)
-    if (!trackMap.has(text)) {
-      trackMap.set(text, { text, color: drugColor(coding), isProphylactic: false, doses: [] })
-    }
-    const track = trackMap.get(text)!
-    track.doses.push({ months: toMonthsFromT0(date, t0), date, index: track.doses.length + 1 })
-  }
-
-  // Mark prophylactic tracks from MedicationRequest
-  for (const mr of medicationRequests) {
-    if (mr.intent !== 'prophylactic') continue
-    const text = (mr.medicationCodeableConcept as fhir4.CodeableConcept | undefined)?.text
-    if (text && trackMap.has(text)) {
-      trackMap.get(text)!.isProphylactic = true
-    }
-  }
-
-  const tracks = [...trackMap.values()]
   const totalH = tracks.length * BAR_H + Math.max(0, tracks.length - 1) * BAR_GAP
   const startY = laneY + (laneHeight - totalH) / 2
 

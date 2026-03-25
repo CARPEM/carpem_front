@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { usePatientStore } from '@/store/patient'
 import { useTimelineStore } from '@/store/timeline'
 import { toMonthsFromT0, T0_ANCHOR_URL } from '@/lib/t0'
@@ -37,95 +37,87 @@ export default function KeyEventsLane({ laneY, laneHeight, plotWidth, onHover }:
   const { zoom, offset } = useTimelineStore()
   const [selectedFlag, setSelectedFlag] = useState<Flag | null>(null)
 
-  if (!t0) return null
+  // Rebuild flags only when patient data changes, not on every zoom/pan
+  const flags = useMemo<Flag[]>(() => {
+    if (!t0) return []
+    const result: Flag[] = []
 
-  const toX = (months: number) => LABEL_WIDTH + (months - offset) * zoom
-
-  // ── Build flags ────────────────────────────────────────────────────────────
-  const flags: Flag[] = []
-
-  // Primary DX from T0-anchor condition (always at month 0)
-  const primaryCondition = conditions.find((c) =>
-    c.extension?.some((e) => e.url === T0_ANCHOR && e.valueBoolean === true),
-  ) ?? conditions.find((c) =>
-    c.clinicalStatus?.coding?.some((cd) => cd.code === 'active') &&
-    c.verificationStatus?.coding?.some((cd) => cd.code === 'confirmed'),
-  )
-
-  if (primaryCondition) {
-    flags.push({
-      id: primaryCondition.id ?? 'dx',
-      months: 0,
-      color: DX_COLOR,
-      shortLabel: 'DX',
-      fullLabel: primaryCondition.code?.text ?? primaryCondition.code?.coding?.[0]?.display ?? 'Diagnosis',
-      code: primaryCondition.code?.coding?.[0]?.display ?? primaryCondition.code?.text ?? '—',
-      resourceType: 'Condition',
-      date: t0,
-    })
-  }
-
-  // Non-anchor active conditions (progression events)
-  conditions
-    .filter(
-      (c) =>
-        !c.extension?.some((e) => e.url === T0_ANCHOR) &&
-        c.onsetDateTime != null,
+    const primaryCondition = conditions.find((c) =>
+      c.extension?.some((e) => e.url === T0_ANCHOR && e.valueBoolean === true),
+    ) ?? conditions.find((c) =>
+      c.clinicalStatus?.coding?.some((cd) => cd.code === 'active') &&
+      c.verificationStatus?.coding?.some((cd) => cd.code === 'confirmed'),
     )
-    .forEach((c) => {
-      const date = new Date(c.onsetDateTime!)
-      flags.push({
-        id: c.id ?? `cond-${c.onsetDateTime}`,
-        months: toMonthsFromT0(date, t0),
-        color: PROG_COLOR,
-        shortLabel: 'P',
-        fullLabel: c.code?.text ?? c.code?.coding?.[0]?.display ?? 'Event',
-        code: c.code?.coding?.[0]?.display ?? c.code?.text ?? '—',
+
+    if (primaryCondition) {
+      result.push({
+        id: primaryCondition.id ?? 'dx',
+        months: 0,
+        color: DX_COLOR,
+        shortLabel: 'DX',
+        fullLabel: primaryCondition.code?.text ?? primaryCondition.code?.coding?.[0]?.display ?? 'Diagnosis',
+        code: primaryCondition.code?.coding?.[0]?.display ?? primaryCondition.code?.text ?? '—',
         resourceType: 'Condition',
-        date,
+        date: t0,
       })
-    })
+    }
 
-  // Progression observations (LOINC 21976-6)
-  observations
-    .filter((o) =>
-      o.code?.coding?.some((c) => c.code === LOINC_PROGRESSION) &&
-      o.effectiveDateTime != null,
-    )
-    .forEach((o) => {
-      const date = new Date(o.effectiveDateTime!)
-      // Avoid duplicating if same date already from condition
-      const alreadyCovered = flags.some(
-        (f) => Math.abs(f.months - toMonthsFromT0(date, t0)) < 0.2,
-      )
-      if (!alreadyCovered) {
-        flags.push({
-          id: o.id ?? `obs-${o.effectiveDateTime}`,
+    conditions
+      .filter((c) => !c.extension?.some((e) => e.url === T0_ANCHOR) && c.onsetDateTime != null)
+      .forEach((c) => {
+        const date = new Date(c.onsetDateTime!)
+        result.push({
+          id: c.id ?? `cond-${c.onsetDateTime}`,
           months: toMonthsFromT0(date, t0),
           color: PROG_COLOR,
           shortLabel: 'P',
-          fullLabel: o.valueCodeableConcept?.text ?? o.valueCodeableConcept?.coding?.[0]?.display ?? 'Progression',
-          code: o.code?.coding?.[0]?.display ?? '—',
-          resourceType: 'Observation',
+          fullLabel: c.code?.text ?? c.code?.coding?.[0]?.display ?? 'Event',
+          code: c.code?.coding?.[0]?.display ?? c.code?.text ?? '—',
+          resourceType: 'Condition',
           date,
         })
-      }
-    })
+      })
 
-  // Death marker from Patient.deceasedDateTime
-  if (patient?.deceasedDateTime) {
-    const date = new Date(patient.deceasedDateTime)
-    flags.push({
-      id: 'death',
-      months: toMonthsFromT0(date, t0),
-      color: DEATH_COLOR,
-      shortLabel: 'D',
-      fullLabel: 'Death',
-      code: 'Death',
-      resourceType: 'Patient',
-      date,
-    })
-  }
+    observations
+      .filter((o) => o.code?.coding?.some((c) => c.code === LOINC_PROGRESSION) && o.effectiveDateTime != null)
+      .forEach((o) => {
+        const date = new Date(o.effectiveDateTime!)
+        const alreadyCovered = result.some(
+          (f) => Math.abs(f.months - toMonthsFromT0(date, t0)) < 0.2,
+        )
+        if (!alreadyCovered) {
+          result.push({
+            id: o.id ?? `obs-${o.effectiveDateTime}`,
+            months: toMonthsFromT0(date, t0),
+            color: PROG_COLOR,
+            shortLabel: 'P',
+            fullLabel: o.valueCodeableConcept?.text ?? o.valueCodeableConcept?.coding?.[0]?.display ?? 'Progression',
+            code: o.code?.coding?.[0]?.display ?? '—',
+            resourceType: 'Observation',
+            date,
+          })
+        }
+      })
+
+    if (patient?.deceasedDateTime) {
+      const date = new Date(patient.deceasedDateTime)
+      result.push({
+        id: 'death',
+        months: toMonthsFromT0(date, t0),
+        color: DEATH_COLOR,
+        shortLabel: 'D',
+        fullLabel: 'Death',
+        code: 'Death',
+        resourceType: 'Patient',
+        date,
+      })
+    }
+    return result
+  }, [conditions, observations, patient, t0])
+
+  if (!t0) return null
+
+  const toX = (months: number) => LABEL_WIDTH + (months - offset) * zoom
 
   const cy = laneY + laneHeight / 2
   const SQ = 24 // square side length

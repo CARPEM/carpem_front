@@ -37,7 +37,7 @@ function MainGrid() {
       </div>
 
       {/* Row 2: Key Somatic Mutations (full width) */}
-      <div className="flex gap-1.5 flex-[0_0_auto]" style={{ height: '32%' }}>
+      <div className="flex gap-1.5 flex-[0_0_auto]" style={{ height: '46%' }}>
         <ChartPanel
           title="Key Somatic Mutations"
           subtitle="(Percent of Patients)"
@@ -51,7 +51,7 @@ function MainGrid() {
       </div>
 
       {/* Row 3: Survival curves + Treatment mix */}
-      <div className="flex gap-1.5 flex-1 min-h-0">
+      <div className="flex gap-1.5 flex-[0_0_auto] min-h-0" style={{ height: '26%' }}>
         <ChartPanel title="Overall Survival" loading={loading} error={error} className="flex-1">
           <OverallSurvivalKM />
         </ChartPanel>
