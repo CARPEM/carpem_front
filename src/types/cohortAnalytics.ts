@@ -64,6 +64,10 @@ export interface CohortAnalyticsResponse {
   rtMix: TreatmentItem[]
   osCurve: KMPoint[]
   pfsCurve: KMPoint[]
+  /** Total number of Specimen resources across filtered patients */
+  sampleCount: number
+  /** Number of patients with at least one Specimen resource */
+  samplePatientCount: number
 }
 
 export interface CohortFilters {

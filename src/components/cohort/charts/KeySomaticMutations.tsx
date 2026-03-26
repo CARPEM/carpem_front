@@ -18,7 +18,8 @@ const VARIANT_COLORS: Record<string, string> = {
 
 const UNALTERED  = '#F3F4F6'
 const LABEL_W    = 80   // gene name column (px)
-const PCT_W      = 36   // right % label column (px)
+const PCT_W      = 36   // % label column (px)
+const FREQ_W     = 64   // frequency bar column (px)
 const ROW_H      = 24   // height per gene row (px)
 const BAR_H      = 14   // filled cell height within row
 const SUMMARY_H  = 20   // per-patient alteration burden bar at top
@@ -67,7 +68,7 @@ export default function KeySomaticMutations({ search }: Props) {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    const update = () => setPlotW(Math.max(0, el.clientWidth - LABEL_W - PCT_W))
+    const update = () => setPlotW(Math.max(0, el.clientWidth - LABEL_W - PCT_W - FREQ_W))
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
@@ -111,7 +112,7 @@ export default function KeySomaticMutations({ search }: Props) {
       {/* SVG matrix */}
       <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto relative select-none">
         {plotW > 0 && cellW > 0 && (
-          <svg width={LABEL_W + actualW + PCT_W} height={svgH} onMouseLeave={hideTooltip}>
+          <svg width={LABEL_W + actualW + PCT_W + FREQ_W} height={svgH} onMouseLeave={hideTooltip}>
 
             {/* ── Summary bar — per-patient alteration burden ── */}
             <text x={LABEL_W - 5} y={PAD_TOP + SUMMARY_H - 2}
@@ -147,7 +148,7 @@ export default function KeySomaticMutations({ search }: Props) {
                   {/* Row background */}
                   <rect
                     x={0} y={rowY}
-                    width={LABEL_W + actualW + PCT_W} height={ROW_H}
+                    width={LABEL_W + actualW + PCT_W + FREQ_W} height={ROW_H}
                     fill={active ? '#EFF6FF' : rowIdx % 2 === 0 ? '#FAFAFA' : 'white'}
                   />
 
@@ -219,6 +220,17 @@ export default function KeySomaticMutations({ search }: Props) {
                   >
                     {gene.pct}%
                   </text>
+
+                  {/* Frequency bar */}
+                  <rect
+                    x={LABEL_W + actualW + PCT_W}
+                    y={barY}
+                    width={(gene.pct / 100) * (FREQ_W - 4)}
+                    height={BAR_H}
+                    rx={2}
+                    fill={dimmed ? '#D1D5DB' : isGOI ? '#D97706' : '#3B82F6'}
+                    opacity={dimmed ? 0.4 : 0.75}
+                  />
                 </g>
               )
             })}

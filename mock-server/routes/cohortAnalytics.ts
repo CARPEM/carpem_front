@@ -559,6 +559,21 @@ function computePfsCurve(bundles: AnyBundle[]): KMPoint[] {
   return kaplanMeier(obs)
 }
 
+// ─── Sample availability ──────────────────────────────────────────────────────
+
+function computeSampleStats(bundles: AnyBundle[]): { sampleCount: number; samplePatientCount: number } {
+  let sampleCount = 0
+  let samplePatientCount = 0
+  for (const bundle of bundles) {
+    const specimens = getResources(bundle, 'Specimen')
+    if (specimens.length > 0) {
+      sampleCount += specimens.length
+      samplePatientCount++
+    }
+  }
+  return { sampleCount, samplePatientCount }
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export function handleCohortAnalytics(req: Request, res: Response): void {
@@ -587,6 +602,7 @@ export function handleCohortAnalytics(req: Request, res: Response): void {
     rtMix:      computeRtMix(bundles),
     osCurve:    computeOsCurve(bundles),
     pfsCurve:   computePfsCurve(bundles),
+    ...computeSampleStats(bundles),
   }
 
   res.json(full)
