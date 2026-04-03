@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
-import { mockBundle } from '../../src/data/mockBundle.ts'
-import { mockBundle2 } from '../../src/data/mockBundle2.ts'
+import { mockBundle } from '../data/mockBundle.ts'
+import { mockBundle2 } from '../data/mockBundle2.ts'
 import {
   mockBundle3,
   mockBundle4,
@@ -10,7 +10,7 @@ import {
   mockBundle8,
   mockBundle9,
   mockBundle10,
-} from '../../src/data/mockBundlesExtra.ts'
+} from '../data/mockBundlesExtra.ts'
 
 // ─── Bundle registry ──────────────────────────────────────────────────────────
 
