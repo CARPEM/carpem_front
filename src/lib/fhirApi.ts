@@ -1,9 +1,8 @@
 import type { FhirBundle, FhirPatient } from '@/types/fhir'
-
-const BASE_URL = (import.meta.env['VITE_FHIR_BASE_URL'] as string | undefined) ?? 'http://localhost:3001/fhir/R4'
+import fhirConfig from '@/config/fhirConfig'
 
 async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: { Accept: 'application/fhir+json' } })
+  const res = await fetch(url, { headers: fhirConfig.headers })
   if (!res.ok) throw new Error(`FHIR request failed: ${res.status} ${res.statusText} (${url})`)
   return res.json() as Promise<T>
 }
@@ -15,7 +14,7 @@ let _patientListCache: FhirPatient[] | null = null
 /** Fetch all Patient resources from GET /Patient (searchset Bundle). */
 export async function fetchPatientList(): Promise<FhirPatient[]> {
   if (_patientListCache) return _patientListCache
-  const bundle = await fetchJson<FhirBundle>(`${BASE_URL}/Patient`)
+  const bundle = await fetchJson<FhirBundle>(`${fhirConfig.baseUrl}/Patient`)
   _patientListCache = (bundle.entry ?? [])
     .map((e) => e.resource)
     .filter((r): r is FhirPatient => r?.resourceType === 'Patient')
@@ -29,7 +28,7 @@ export async function fetchPatientList(): Promise<FhirPatient[]> {
  */
 export async function fetchPatientEverything(patientId: string): Promise<FhirBundle> {
   const allEntries: FhirBundle['entry'] = []
-  let nextUrl: string | undefined = `${BASE_URL}/Patient/${patientId}/$everything`
+  let nextUrl: string | undefined = `${fhirConfig.baseUrl}/Patient/${patientId}/$everything`
 
   while (nextUrl) {
     const page = await fetchJson<FhirBundle>(nextUrl)

@@ -1,8 +1,5 @@
 import type { CohortAnalyticsResponse, CohortFilters } from '@/types/cohortAnalytics'
-
-const BASE_URL =
-  (import.meta.env['VITE_FHIR_BASE_URL'] as string | undefined) ??
-  'http://localhost:3001/fhir/R4'
+import fhirConfig from '@/config/fhirConfig'
 
 /**
  * Fetch aggregated cohort analytics from the server.
@@ -22,8 +19,8 @@ export async function fetchCohortAnalytics(
   if (filters.gene)     params.set('gene',      filters.gene)
   if (filters.code)     params.set('code',      filters.code)
 
-  const res = await fetch(`${BASE_URL}/cohort/analytics?${params}`, {
-    headers: { Accept: 'application/json' },
+  const res = await fetch(`${fhirConfig.baseUrl}/cohort/analytics?${params}`, {
+    headers: fhirConfig.analyticsHeaders,
   })
   if (!res.ok) throw new Error(`Analytics request failed: ${res.status} ${res.statusText}`)
   return res.json() as Promise<CohortAnalyticsResponse>
